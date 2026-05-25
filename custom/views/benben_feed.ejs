@@ -1,4 +1,4 @@
-<!-- 这是首页/profile 用的犇犇 widget,提供发布表单 + tab + AJAX 信息流 -->
+
 <style>
 .benben-tabs {
   display: flex;
@@ -127,7 +127,7 @@
 
 <div class="benben-widget" id="benben-widget-root">
   <% if (res.locals.user) { %>
-    <!-- 发布表单 -->
+
     <form method="post" action="<%= syzoj.utils.makeUrl(['benben', 'new']) %>"
           enctype="multipart/form-data"
           class="benben-compose" id="benben-compose-form">
@@ -156,18 +156,16 @@
     </div>
   <% } %>
 
-  <!-- Tabs -->
   <% if (res.locals.user) { %>
     <div class="benben-tabs">
       <div class="benben-tab active" data-tab="following">我关注的</div>
       <div class="benben-tab" data-tab="mine">我发布的</div>
-      <% if (res.locals.user.is_admin || (res.locals.user.privileges && res.locals.user.privileges.includes('manage_user'))) { %>
+      <% if (res.locals.can && res.locals.can('moderate_community')) { %>
         <div class="benben-tab" data-tab="all">全部（管理查看）</div>
       <% } %>
     </div>
   <% } %>
 
-  <!-- Feed -->
   <div id="benben-feed-container">
     <div class="benben-feed-loading">
       <% if (res.locals.user) { %>
@@ -209,7 +207,6 @@
       imagesHtml += '</div>';
     }
     var avatarUrl = p.user ? p.user.avatar : '';
-    // 直接用后端生成的 usernameHtml(含颜色 + 牌子 tag),不本地选转义
     var userBlock = p.user ?
       ('<a href="/user/' + p.user.id + '" style="text-decoration: none;">' + p.user.usernameHtml + '</a>') :
       '<span style="color:#999">(已删除)</span>';
@@ -250,8 +247,6 @@
       feedContainer.innerHTML = '<div class="benben-feed-empty">加载失败</div>';
     });
   }
-
-  // 切换 tab
   tabs.forEach(function (t) {
     t.addEventListener('click', function () {
       tabs.forEach(function (x) { x.classList.remove('active'); });
@@ -260,8 +255,6 @@
       loadFeed();
     });
   });
-
-  // 字数计数
   var textarea = document.getElementById('benben-textarea');
   var charCount = document.getElementById('benben-char-count');
   if (textarea) {
@@ -270,7 +263,6 @@
       charCount.textContent = len + ' / 500';
       charCount.classList.toggle('over', len > 500);
     });
-    // Ctrl+Enter 提交
     textarea.addEventListener('keydown', function (e) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
@@ -278,8 +270,6 @@
       }
     });
   }
-
-  // 图片预览
   var fileInput = document.getElementById('benben-image-input');
   var preview = document.getElementById('benben-image-preview');
   if (fileInput) {
@@ -302,8 +292,6 @@
       });
     });
   }
-
-  // 初始加载
   if (loggedIn) loadFeed();
 })();
 </script>

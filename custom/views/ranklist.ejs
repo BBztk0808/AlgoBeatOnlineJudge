@@ -1,8 +1,8 @@
 <% this.title = '排名' %>
 <% include header %>
 <div class="padding">
-  <form action="<%= syzoj.utils.makeUrl(['find_user']) %>" class="ui mini form" method="get" role="form" style="margin-bottom: 25px; text-align: right; ">
-    <div class="ui action left icon input inline" style="width: 180px; margin-right: 77px; ">
+  <form action="<%= syzoj.utils.makeUrl(['find_user']) %>" class="ui mini form ab-ranklist-search" method="get" role="form">
+    <div class="ui action left icon input inline">
       <i class="search icon"></i><input name="nickname" placeholder="用户名" type="text">
       <button class="ui mini button" type="submit">查找用户</button>
     </div>
@@ -21,7 +21,8 @@
   </div>
 
   <div class="ui bottom attached segment" style="border-top: none; padding: 18px 12px;">
-            <table class="ui very basic center aligned table" style="table-layout: fixed; margin: 0;">
+            <div class="ab-scroll-table">
+            <table class="ui very basic center aligned table ab-ranklist-table" style="table-layout: fixed; margin: 0;">
                 <thead>
                 <tr>
                     <th style="width: 60px; ">#</th>
@@ -52,16 +53,12 @@
                 <%
             let i = (paginate.currPage - 1) * paginate.perPage;
             for (let user of ranklist) {
-              ++i;
-              // 计算 Hit 值显示(优先用路由层 join 出的 __hitTotal,否则查内存 Map)
-              let hitValue = 0;
+              ++i;              let hitValue = 0;
               if (typeof user.__hitTotal !== 'undefined') {
                 hitValue = user.__hitTotal;
               } else if (syzoj.userHitScores && syzoj.userHitScores.has(user.id)) {
                 hitValue = syzoj.userHitScores.get(user.id).total || 0;
-              }
-              // Hit 值的 tier 颜色,用于显示
-              let hitTier = 'gray';
+              }              let hitTier = 'gray';
               if (user.is_admin) hitTier = 'admin';
               else if (syzoj.adminUserIds && syzoj.adminUserIds.has(user.id)) hitTier = 'admin';
               else if (hitValue >= 350) hitTier = 'red';
@@ -97,6 +94,7 @@
                     <% } %>
                 </tbody>
             </table>
+            </div>
   </div>
     <br>
 <% include page %>

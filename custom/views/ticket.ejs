@@ -8,7 +8,7 @@ let subInfo = cat ? cat.subtypes.find(s => s.value === ticket.subtype) : null;
 %>
 
 <div class="padding">
-  <!-- 顶部：工单标题 + 编号 -->
+
   <div style="margin-bottom: 18px;">
     <div style="color: #888; font-size: 0.9em; margin-bottom: 6px;">
       <a href="<%= syzoj.utils.makeUrl(['tickets']) %>"><i class="angle left icon"></i>返回工单列表</a>
@@ -31,16 +31,16 @@ let subInfo = cat ? cat.subtypes.find(s => s.value === ticket.subtype) : null;
     </div>
   </div>
 
-  <div class="ui grid">
-    <!-- 左侧：工单描述 + 附件 + 回复区 -->
+  <div class="ui grid ab-ticket-layout">
+
     <div class="eleven wide column">
-      <!-- 工单描述 -->
-      <div class="ui top attached block header">
+
+      <div class="ui top attached block header ab-ticket-section-header">
         <i class="info circle icon"></i> 工单描述
         <% if (canWithdraw) { %>
           <form method="post" action="<%= syzoj.utils.makeUrl(['ticket', ticket.id, 'withdraw']) %>"
                 onsubmit="return confirm('确定撤回此工单吗？\n\n撤回后状态将变为「已关闭」，无法再修改或回复。');"
-                style="display: inline; float: right; margin: 0;">
+                class="ab-header-action">
             <button type="submit" class="ui mini grey button">
               <i class="undo icon"></i> 撤回工单
             </button>
@@ -55,7 +55,7 @@ let subInfo = cat ? cat.subtypes.find(s => s.value === ticket.subtype) : null;
         <% } %>
       </div>
 
-      <!-- 工单附件 -->
+
       <% if (typeof attachments !== 'undefined' && attachments && attachments.length > 0) { %>
         <div class="ui top attached block header" style="margin-top: 25px;">
           <i class="paperclip icon"></i> 工单附件 (<%= attachments.length %>)
@@ -67,7 +67,7 @@ let subInfo = cat ? cat.subtypes.find(s => s.value === ticket.subtype) : null;
             let sizeStr = sizeKB > 1024 ? (sizeKB / 1024).toFixed(2) + ' MB' : sizeKB + ' KB';
             let downloadUrl = syzoj.utils.makeUrl(['ticket-attachment', att.id]);
           %>
-            <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+            <div class="ab-attachment-row" style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
               <% if (isImg) { %>
                 <a href="<%= downloadUrl %>" target="_blank" style="flex-shrink: 0;">
                   <img src="<%= downloadUrl %>" style="width: 60px; height: 60px; object-fit: cover; border: 1px solid #ddd; border-radius: 3px;">
@@ -99,7 +99,7 @@ let subInfo = cat ? cat.subtypes.find(s => s.value === ticket.subtype) : null;
         </div>
       <% } %>
 
-      <!-- 回复时间线 -->
+
       <div class="ui top attached block header" style="margin-top: 25px;">
         <i class="comments icon"></i> 工单回复 (<%= replies.length %>)
       </div>
@@ -114,14 +114,14 @@ let subInfo = cat ? cat.subtypes.find(s => s.value === ticket.subtype) : null;
             let isSysMsg = r.is_status_change;
           %>
             <% if (isSysMsg) { %>
-              <!-- 系统消息样式 -->
-              <div style="text-align: center; padding: 12px 20px; color: #888; font-size: 0.9em; background: #fafafa; border-bottom: 1px solid #eee;">
+
+              <div class="ab-message-row" style="text-align: center; padding: 12px 20px; color: #888; font-size: 0.9em; background: #fafafa; border-bottom: 1px solid #eee;">
                 <i class="info circle icon"></i> <%= r.content %>
                 <span style="margin-left: 8px; color: #aaa;">· <%= syzoj.utils.formatDate(r.created_at) %></span>
               </div>
             <% } else { %>
-              <!-- 普通回复 -->
-              <div style="padding: 14px 18px; border-bottom: 1px solid #eee; <% if (r.is_internal) { %>background: #fffbe6;<% } %>">
+
+              <div class="ab-message-row" style="padding: 14px 18px; border-bottom: 1px solid #eee; <% if (r.is_internal) { %>background: #fffbe6;<% } %>">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                   <div>
                     <% if (ru) { %>
@@ -146,7 +146,7 @@ let subInfo = cat ? cat.subtypes.find(s => s.value === ticket.subtype) : null;
         <% } %>
       </div>
 
-      <!-- 回复表单 + 附件上传 -->
+
       <% if (canReply) { %>
         <div class="ui top attached block header" style="margin-top: 25px;">
           <i class="reply icon"></i> 添加回复
@@ -171,7 +171,7 @@ let subInfo = cat ? cat.subtypes.find(s => s.value === ticket.subtype) : null;
             </button>
           </form>
 
-          <!-- 附件上传 -->
+
           <div class="ui divider"></div>
           <div>
             <h5 style="margin-bottom: 8px;">
@@ -265,9 +265,9 @@ let subInfo = cat ? cat.subtypes.find(s => s.value === ticket.subtype) : null;
 
     </div>
 
-    <!-- 右侧：基本信息卡 + admin 操作面板 -->
+
     <div class="five wide column">
-      <!-- 基本信息卡 -->
+
       <div class="ui segment">
         <h4 style="margin-top: 0;">基本信息</h4>
         <table style="width: 100%;">
@@ -330,7 +330,7 @@ let subInfo = cat ? cat.subtypes.find(s => s.value === ticket.subtype) : null;
         </div>
       </div>
 
-      <!-- 额外字段(举报原因等) -->
+
       <% if (Object.keys(extraData).length > 0) { %>
         <div class="ui segment">
           <h4 style="margin-top: 0;">附加信息</h4>
@@ -345,12 +345,12 @@ let subInfo = cat ? cat.subtypes.find(s => s.value === ticket.subtype) : null;
         </div>
       <% } %>
 
-      <!-- admin 操作面板 -->
+
       <% if (isAdmin) { %>
         <div class="ui segment">
           <h4 style="margin-top: 0;"><i class="shield alternate icon"></i> 管理员操作</h4>
 
-          <!-- 认领按钮 -->
+
           <% if (ticket.assignee_id !== res.locals.user.id) { %>
             <form method="post" action="<%= syzoj.utils.makeUrl(['ticket', ticket.id, 'assign']) %>"
                   onsubmit="return confirm('<%= ticket.assignee_id ? '确定接手此工单吗?原处理人将被替换为您。' : '确定认领此工单吗?认领后才能回复和改状态。' %>');"
@@ -361,7 +361,7 @@ let subInfo = cat ? cat.subtypes.find(s => s.value === ticket.subtype) : null;
               </button>
             </form>
           <% } else { %>
-            <!-- 状态变更按钮(已认领) -->
+
             <% if (canChangeStatus && !['closed', 'rejected', 'resolved'].includes(ticket.status)) { %>
               <form method="post" action="<%= syzoj.utils.makeUrl(['ticket', ticket.id, 'status']) %>"
                     onsubmit="return confirm('确定将工单状态变更为「已处理」吗？变更后将不能再回复。');"
@@ -389,7 +389,7 @@ let subInfo = cat ? cat.subtypes.find(s => s.value === ticket.subtype) : null;
                 </form>
               <% } %>
             <% } else if (['closed', 'rejected', 'resolved'].includes(ticket.status)) { %>
-              <!-- 已结案，允许重新打开 -->
+
               <form method="post" action="<%= syzoj.utils.makeUrl(['ticket', ticket.id, 'status']) %>"
                     onsubmit="return confirm('确定重新打开此工单吗？');"
                     style="margin-bottom: 8px;">
@@ -401,8 +401,8 @@ let subInfo = cat ? cat.subtypes.find(s => s.value === ticket.subtype) : null;
             <% } %>
           <% } %>
 
-          <!-- 危险区域：删除(仅 super admin) -->
-          <% if (res.locals.user.is_admin) { %>
+
+          <% if (res.locals.can && res.locals.can('super_admin')) { %>
             <div class="ui divider"></div>
             <form method="post" action="<%= syzoj.utils.makeUrl(['ticket', ticket.id, 'delete']) %>"
                   onsubmit="return confirm('真的要永久删除此工单吗？\n\n所有回复也会一并删除，此操作不可撤销！');"

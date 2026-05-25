@@ -8,7 +8,6 @@
     <div class="active section">犇犇 #<%= post.id %></div>
   </div>
 
-  <!-- 原犇犇 -->
   <div class="ui segment benben-card" style="margin-bottom: 14px;">
     <div style="display: flex; align-items: flex-start; gap: 12px;">
       <a href="<%= syzoj.utils.makeUrl(['user', post.user.id]) %>" style="flex-shrink: 0;">
@@ -51,7 +50,6 @@
     </div>
   </div>
 
-  <!-- 回复列表 -->
   <h4 class="ui top attached block header">
     <i class="comments icon"></i>
     回复 (<%= post.replies.length %>)
@@ -75,7 +73,7 @@
             <div style="margin-top: 4px; line-height: 1.5; word-break: break-word; font-size: 0.95em;">
               <%- reply.contentRendered %>
             </div>
-            <% if (res.locals.user && (res.locals.user.id === reply.user_id || res.locals.user.is_admin || (res.locals.user.privileges && res.locals.user.privileges.includes('manage_user')))) { %>
+            <% if (res.locals.user && (res.locals.user.id === reply.user_id || (res.locals.can && res.locals.can('moderate_community')))) { %>
               <form method="post" action="<%= syzoj.utils.makeUrl(['benben', reply.id, 'delete']) %>"
                     style="display: inline; margin-top: 4px;"
                     onsubmit="return confirm('确认删除此回复？');">
@@ -90,7 +88,6 @@
       <% } %>
     <% } %>
 
-    <!-- 回复表单 -->
     <% if (res.locals.user) { %>
       <form method="post" action="<%= syzoj.utils.makeUrl(['benben', 'new']) %>" class="ui form" style="margin-top: 18px;">
         <input type="hidden" name="reply_to" value="<%= post.id %>">

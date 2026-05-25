@@ -1,2 +1,38 @@
-/* ============ AlgoBeat 移动端适配已取消 v1.6.0 ============ */
-/* 决策:站点固定按桌面宽度展示,手机用户横向滚动查看 */
+
+
+@media (max-width: 900px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .ui.container {
+    max-width: 100% !important;
+  }
+
+  .ui.form .fields,
+  .ui.form .inline.fields {
+    flex-wrap: wrap;
+  }
+
+  .ui.form .inline.fields > .field {
+    padding-right: 0 !important;
+    margin-bottom: 10px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .ui.mini.button,
+  .ui.small.button,
+  .ui.button {
+    line-height: 1.2;
+  }
+
+  .ui.icon.message {
+    display: block;
+  }
+
+  .ui.icon.message > .icon:not(.close) {
+    margin-bottom: 8px;
+  }
+}

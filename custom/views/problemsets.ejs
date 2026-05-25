@@ -1,0 +1,70 @@
+<% this.title = '题单' %>
+<% include header %>
+
+<div class="padding">
+  <div class="ab-toolbar" style="margin-bottom: 18px;">
+    <div>
+      <h2 style="margin: 0;"><i class="tasks icon"></i> 题单</h2>
+      <div style="color: #888; margin-top: 6px;">按主题整理题目，适合入门、专题训练和赛后补题。</div>
+    </div>
+    <% if (user) { %>
+      <a class="ui primary button" href="<%= syzoj.utils.makeUrl(['problemset', 'new']) %>">
+        <i class="plus icon"></i> 新建题单
+      </a>
+    <% } %>
+  </div>
+
+  <div class="ui pointing secondary menu">
+    <a class="<%= tab === 'public' ? 'active' : '' %> item" href="<%= syzoj.utils.makeUrl(['problemsets'], { tab: 'public' }) %>">
+      公开题单
+    </a>
+    <% if (user) { %>
+      <a class="<%= tab === 'mine' ? 'active' : '' %> item" href="<%= syzoj.utils.makeUrl(['problemsets'], { tab: 'mine' }) %>">
+        我的题单
+      </a>
+    <% } %>
+  </div>
+
+  <% if (!sets.length) { %>
+    <div class="ui placeholder segment">
+      <div class="ui icon header">
+        <i class="tasks icon"></i>
+        <% if (tab === 'mine') { %>你还没有创建题单<% } else { %>暂无公开题单<% } %>
+      </div>
+      <% if (user) { %>
+        <a class="ui primary button" href="<%= syzoj.utils.makeUrl(['problemset', 'new']) %>">创建第一份题单</a>
+      <% } %>
+    </div>
+  <% } else { %>
+    <div style="color: #888; margin: 12px 0;">共 <b><%= total %></b> 份题单</div>
+    <div class="ui divided items">
+      <% for (let set of sets) { %>
+        <div class="item">
+          <div class="content">
+            <a class="header" href="<%= syzoj.utils.makeUrl(['problemset', set.id]) %>"><%= set.title %></a>
+            <div class="meta">
+              <span><i class="list icon"></i><%= set.items_count || 0 %> 题</span>
+              <% if (set.visibility === 'private') { %>
+                <span class="ui tiny grey label"><i class="lock icon"></i>私有</span>
+              <% } else { %>
+                <span class="ui tiny green label"><i class="globe icon"></i>公开</span>
+              <% } %>
+              <% if (set.owner) { %>
+                <span>作者：<%- syzoj.utils.renderUsername(set.owner) %></span>
+              <% } %>
+              <span>更新：<%= syzoj.utils.formatDate(set.updated_at) %></span>
+            </div>
+            <% if (set.description) { %>
+              <div class="description" style="margin-top: 8px; color: #666;">
+                <%= set.description.length > 160 ? set.description.substring(0, 160) + '...' : set.description %>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+    </div>
+    <% include page %>
+  <% } %>
+</div>
+
+<% include footer %>

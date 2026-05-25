@@ -36,6 +36,10 @@ services:
       - ./custom/views/solution_edit.ejs:/app/views/solution_edit.ejs:ro
       - ./custom/views/problem.ejs:/app/views/problem.ejs:ro
       - ./custom/views/admin_solutions.ejs:/app/views/admin_solutions.ejs:ro
+      - ./custom/models/admin-audit-log.ts:/app/models/admin-audit-log.ts:ro
+      - ./custom/models-built/admin-audit-log.js:/app/models-built/admin-audit-log.js:ro
+      - ./custom/modules/_authz.js:/app/modules/_authz.js:ro
+      - ./custom/modules/_audit.js:/app/modules/_audit.js:ro
       - ./custom/modules/_user_privilege_loader.js:/app/modules/_user_privilege_loader.js:ro
       - ./custom/logo.png:/app/static/self/logo.png:ro
       - ./custom/views/footer.ejs:/app/views/footer.ejs:ro
@@ -83,6 +87,17 @@ services:
       - ./custom/views/clipboard_list.ejs:/app/views/clipboard_list.ejs:ro
       - ./custom/views/clipboard_view.ejs:/app/views/clipboard_view.ejs:ro
       - ./custom/views/clipboard_edit.ejs:/app/views/clipboard_edit.ejs:ro
+      - ./custom/models-built/problem-set.js:/app/models-built/problem-set.js:ro
+      - ./custom/models-built/problem-set-item.js:/app/models-built/problem-set-item.js:ro
+      - ./custom/models-built/problem-favorite.js:/app/models-built/problem-favorite.js:ro
+      - ./custom/models/problem-set.ts:/app/models/problem-set.ts:ro
+      - ./custom/models/problem-set-item.ts:/app/models/problem-set-item.ts:ro
+      - ./custom/models/problem-favorite.ts:/app/models/problem-favorite.ts:ro
+      - ./custom/modules/problemset.js:/app/modules/problemset.js:ro
+      - ./custom/views/problemsets.ejs:/app/views/problemsets.ejs:ro
+      - ./custom/views/problemset.ejs:/app/views/problemset.ejs:ro
+      - ./custom/views/problemset_edit.ejs:/app/views/problemset_edit.ejs:ro
+      - ./custom/views/favorites.ejs:/app/views/favorites.ejs:ro
       - ./custom/models-built/problem-solution-setting.js:/app/models-built/problem-solution-setting.js:ro
       - ./custom/models/problem-solution-setting.ts:/app/models/problem-solution-setting.ts:ro
       - ./custom/models-built/email-verification-token.js:/app/models-built/email-verification-token.js:ro
@@ -99,6 +114,7 @@ services:
       - ./custom/sidebar.css:/app/static/self/sidebar.css:ro
       - ./custom/sidebar.js:/app/static/self/sidebar.js:ro
       - ./custom/mobile.css:/app/static/self/mobile.css:ro
+      - ./custom/apple-ui.css:/app/static/self/apple-ui.css:ro
       - ./custom/views/ranklist.ejs:/app/views/ranklist.ejs:ro
       - ./custom/views/discussion.ejs:/app/views/discussion.ejs:ro
       - ./custom/views/article.ejs:/app/views/article.ejs:ro

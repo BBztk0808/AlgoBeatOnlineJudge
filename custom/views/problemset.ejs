@@ -1,0 +1,91 @@
+<% this.title = set.title + ' - 题单' %>
+<% include header %>
+
+<div class="padding">
+  <div class="ab-toolbar" style="margin-bottom: 18px;">
+    <div>
+      <h2 style="margin: 0;"><i class="tasks icon"></i> <%= set.title %></h2>
+      <div style="color: #888; margin-top: 6px;">
+        <% if (set.owner) { %>作者：<%- syzoj.utils.renderUsername(set.owner) %> · <% } %>
+        <%= set.items_count || items.length %> 题 ·
+        <% if (set.visibility === 'private') { %>私有<% } else { %>公开<% } %> ·
+        更新于 <%= syzoj.utils.formatDate(set.updated_at) %>
+      </div>
+    </div>
+    <div class="ab-actions">
+      <a class="ui button" href="<%= syzoj.utils.makeUrl(['problemsets']) %>">
+        <i class="angle left icon"></i> 返回题单
+      </a>
+      <% if (canEdit) { %>
+        <a class="ui primary button" href="<%= syzoj.utils.makeUrl(['problemset', set.id, 'edit']) %>">
+          <i class="edit icon"></i> 编辑
+        </a>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (set.description) { %>
+    <h4 class="ui top attached block header"><i class="info circle icon"></i>题单介绍</h4>
+    <div class="ui bottom attached segment font-content"><%- set.descriptionRendered %></div>
+  <% } %>
+
+  <% if (user && items.length) { %>
+    <% let percent = Math.round(acceptedCount * 100 / items.length); %>
+    <div class="ui segment">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <b>完成进度：<%= acceptedCount %> / <%= items.length %></b>
+        <span style="color: #888;"><%= percent %>%</span>
+      </div>
+      <div class="ui tiny progress" style="margin-top: 10px; margin-bottom: 0;">
+        <div class="bar" style="width: <%= percent %>%;"></div>
+      </div>
+    </div>
+  <% } %>
+
+  <h4 class="ui top attached block header"><i class="list icon"></i>题目列表</h4>
+  <div class="ui bottom attached segment">
+    <% if (!items.length) { %>
+      <div class="ui placeholder segment">
+        <div class="ui icon header">
+          <i class="list icon"></i>
+          这个题单还没有题目
+        </div>
+      </div>
+    <% } else { %>
+      <div class="ab-scroll-table">
+        <table class="ui very basic table">
+          <thead>
+            <tr>
+              <th style="width: 72px;">状态</th>
+              <th style="width: 100px;">题号</th>
+              <th>题目</th>
+              <th>备注</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (let item of items) { %>
+              <tr>
+                <td>
+                  <% if (user) { %>
+                    <% if (item.accepted) { %>
+                      <span class="ui green tiny label"><i class="check icon"></i>AC</span>
+                    <% } else { %>
+                      <span class="ui grey tiny label">未过</span>
+                    <% } %>
+                  <% } else { %>
+                    <span class="ui grey tiny label">-</span>
+                  <% } %>
+                </td>
+                <td><a href="<%= syzoj.utils.makeUrl(['problem', item.problem_id]) %>">#<%= item.problem_id %></a></td>
+                <td><a href="<%= syzoj.utils.makeUrl(['problem', item.problem_id]) %>"><%= item.problem.title %></a></td>
+                <td style="color: #666;"><%= item.note || '' %></td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<% include footer %>

@@ -9,6 +9,12 @@ SYZOJ_WEB_SECRET_SESSION=请替换为 64 位随机字符串
 SYZOJ_WEB_SECRET_JUDGE=请替换为 64 位随机字符串
 SYZOJ_WEB_SECRET_EMAIL=请替换为 64 位随机字符串
 
+# 站点外部访问地址(用于邮件验证链接;本地可留空自动使用请求 Host)
+SYZOJ_WEB_PUBLIC_BASE_URL=
+
+# 调试开关:设为 1 才输出评测进度调试日志
+SYZOJ_DEBUG_JUDGE_PROGRESS=0
+
 # SMTP 邮件发送配置(用于邮箱验证)
 SYZOJ_WEB_SMTP_HOST=smtp.zoho.com.cn
 SYZOJ_WEB_SMTP_PORT=465

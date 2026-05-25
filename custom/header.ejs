@@ -4,10 +4,24 @@
 <head>
     <meta charset="utf-8">
     <meta content="IE=edge" http-equiv="X-UA-Compatible">
-    <meta name="viewport" content="width=1200">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
     <title><%= title %> - <%= syzoj.config.title %></title>
     <link rel="icon" type="image/png" href="/self/favicon.png">
-    <!-- Google Analytics 4 -->
+    <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem('algobeat_theme');
+        if (theme === 'dark') {
+          document.documentElement.setAttribute('data-ab-theme', 'dark');
+          document.documentElement.style.colorScheme = 'dark';
+        } else {
+          document.documentElement.style.colorScheme = 'light';
+        }
+      } catch (e) {}
+    })();
+    </script>
+
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-5S5PF5SMBP"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -20,8 +34,10 @@
     <link href="/self/username_tiers.css?v=1" rel="stylesheet">
     <link href="<%- selfLib('style.css') %>?20181212" rel="stylesheet">
     <link href="<%- lib('morris.js/0.5.1/morris.css') %>" rel="stylesheet">
-    <link href="/self/sidebar.css?v=1.6.0" rel="stylesheet">
-    <link href="/self/mobile.css?v=1.6.0" rel="stylesheet">
+    <link href="/self/lib/animate.min.css?v=4.1.1" rel="stylesheet">
+    <link href="/self/sidebar.css?v=2.0.0" rel="stylesheet">
+    <link href="/self/mobile.css?v=2.0.0" rel="stylesheet">
+    <link href="/self/apple-ui.css?v=2.3.4" rel="stylesheet">
     <% if (useLocalLibs || !syzoj.config.google_fonts || !['like-google-fonts', 'like-local', 'built-in'].includes(syzoj.config.google_fonts.type)) { %>
       <link href="<%- syzoj.utils.makeUrl(['google-fonts', 'fira-mono.css']) %>" rel="stylesheet">
       <link href="<%- syzoj.utils.makeUrl(['google-fonts', 'lato.css']) %>" rel="stylesheet">
@@ -45,7 +61,6 @@
     <% } %>
     <script data-cfasync="false" src="<%- lib('jquery/3.3.1/jquery.min.js') %>"></script>
     <%
-    // ============ 用户名颜色 tier 注入 ============
     let _tierMap = {};
     function _calcTier(userId, isAdminUser) {
         if (isAdminUser) return 'admin';
@@ -94,10 +109,9 @@
 </head>
 <body class="algobeat-sidebar-layout">
 
-    <!-- ============ Top Bar ============ -->
     <div class="ab-topbar">
       <div class="ab-topbar-left">
-        <button type="button" class="ab-topbar-toggle" title="折叠/展开侧栏">
+        <button type="button" class="ab-topbar-toggle" title="折叠/展开侧栏" aria-label="折叠或展开侧栏" aria-controls="ab-sidebar" aria-expanded="false">
           <i class="bars icon"></i>
         </button>
         <a href="/" class="ab-topbar-brand">
@@ -111,6 +125,10 @@
         <% } %>
       </div>
       <div class="ab-topbar-right">
+        <button type="button" class="ab-topbar-icon ab-theme-toggle" id="ab-theme-toggle"
+                aria-label="切换暗色模式" aria-pressed="false" title="切换暗色模式">
+          <i class="moon outline icon"></i>
+        </button>
         <% if (user) { %>
           <a class="ab-topbar-icon" href="<%= syzoj.utils.makeUrl(['notifications']) %>" title="通知中心">
             <i class="bell outline icon"></i>
@@ -125,7 +143,7 @@
             <% } %>
           </a>
           <div class="ui simple dropdown ab-topbar-user-dropdown">
-            <%= user.username %><% if (user.nameplate) { %><%- user.nameplate %><% } %>
+            <span class="ab-topbar-user-label"><%= user.username %><% if (user.nameplate) { %><%- user.nameplate %><% } %></span>
             <i class="dropdown icon"></i>
             <div class="menu">
               <a class="item" href="<%= syzoj.utils.makeUrl(['user', user.id]) %>"><i class="user icon"></i>我的主页</a>
@@ -173,14 +191,13 @@
             </div>
           </div>
         <% } else { %>
-          <a class="ab-topbar-icon" href="<%= syzoj.utils.makeUrl(['login'], { url: req.query['url'] || req.originalUrl }) %>" style="padding: 6px 14px;">登录</a>
-          <a class="ab-topbar-icon" href="<%= syzoj.utils.makeUrl(['sign_up'], { url: req.query['url'] || req.originalUrl }) %>" style="padding: 6px 14px; background: #2185d0; color: white !important;">注册</a>
+          <a class="ab-topbar-icon ab-topbar-login" href="<%= syzoj.utils.makeUrl(['login'], { url: req.query['url'] || req.originalUrl }) %>">登录</a>
+          <a class="ab-topbar-icon ab-topbar-register" href="<%= syzoj.utils.makeUrl(['sign_up'], { url: req.query['url'] || req.originalUrl }) %>">注册</a>
         <% } %>
       </div>
     </div>
 
-    <!-- ============ Side Bar ============ -->
-    <aside class="ab-sidebar">
+    <aside class="ab-sidebar" id="ab-sidebar">
       <a href="/" class="ab-sidebar-header">
         <img src="/self/logo.png" alt="logo">
       </a>
@@ -188,9 +205,17 @@
         <a class="ab-sidebar-item<% if (active === '') { %> active<% } %>" href="/">
           <i class="home icon"></i><span class="ab-sidebar-label">首页</span>
         </a>
-        <a class="ab-sidebar-item<% if (active.startsWith('problem')) { %> active<% } %>" href="/problems">
+        <a class="ab-sidebar-item<% if (active.startsWith('problem') && !active.startsWith('problemset')) { %> active<% } %>" href="/problems">
           <i class="list icon"></i><span class="ab-sidebar-label">题库</span>
         </a>
+        <a class="ab-sidebar-item<% if (active.startsWith('problemset')) { %> active<% } %>" href="/problemsets">
+          <i class="tasks icon"></i><span class="ab-sidebar-label">题单</span>
+        </a>
+        <% if (user) { %>
+          <a class="ab-sidebar-item<% if (active.startsWith('favorites')) { %> active<% } %>" href="/favorites">
+            <i class="star outline icon"></i><span class="ab-sidebar-label">收藏</span>
+          </a>
+        <% } %>
         <a class="ab-sidebar-item<% if (active.startsWith('contest')) { %> active<% } %>" href="/contests">
           <i class="calendar icon"></i><span class="ab-sidebar-label">比赛</span>
         </a>
@@ -217,9 +242,7 @@
       </nav>
     </aside>
 
-    <!-- ============ Backdrop (移动端遮罩) ============ -->
     <div class="ab-backdrop"></div>
 
-    <!-- ============ Main Content ============ -->
     <div style="margin-top: 0;">
-    <div class="ui main container">
+    <div class="ui main container<% if (typeof mainContainerClass !== 'undefined' && mainContainerClass) { %> <%= mainContainerClass %><% } %>">

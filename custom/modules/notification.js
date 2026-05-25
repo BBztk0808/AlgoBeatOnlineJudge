@@ -1,25 +1,26 @@
 let Notification = syzoj.model('notification');
 let User = syzoj.model('user');
 
-// ============ 通用 API:创建通知 ============
-// 暴露给所有触发点(题解审核 / 工单 / @ 提及 / 评论回复等)统一调用
+function truncate(s, max) {
+  if (s === null || s === undefined) return null;
+  s = String(s);
+  return s.length > max ? s.substring(0, max) : s;
+}
 async function createNotification(opts) {
   try {
-    // 校验
     if (!opts.recipientId || !opts.type || !opts.title) {
       syzoj.log('[notification] createNotification: missing required fields');
       return null;
     }
-    // 不给自己发通知(actor === recipient 时跳过)
     if (opts.actorId && opts.actorId === opts.recipientId) {
       return null;
     }
     let n = await Notification.create({
       recipient_id: opts.recipientId,
-      type: opts.type,
-      title: opts.title.substring(0, 255),
+      type: truncate(opts.type, 50),
+      title: truncate(opts.title, 255),
       content: opts.content || null,
-      source_url: opts.sourceUrl ? opts.sourceUrl.substring(0, 500) : null,
+      source_url: truncate(opts.sourceUrl, 500),
       source_id: opts.sourceId || null,
       actor_id: opts.actorId || null,
       is_read: 0,
@@ -33,9 +34,14 @@ async function createNotification(opts) {
   }
 }
 
-syzoj.utils.createNotification = createNotification;
-
-// ============ 通用 API:统计未读数 ============
+async function createMany(items) {
+  if (!Array.isArray(items)) return [];
+  let results = [];
+  for (let item of items) {
+    results.push(await createNotification(item));
+  }
+  return results;
+}
 async function countUnread(userId) {
   if (!userId) return 0;
   try {
@@ -51,9 +57,14 @@ async function countUnread(userId) {
   }
 }
 
-syzoj.utils.countUnreadNotifications = countUnread;
+syzoj.notify = {
+  create: createNotification,
+  createMany: createMany,
+  countUnread: countUnread
+};
 
-// ============ 列表页 GET /notifications ============
+syzoj.utils.createNotification = createNotification;
+syzoj.utils.countUnreadNotifications = countUnread;
 app.get('/notifications', async (req, res) => {
   try {
     if (!res.locals.user) {
@@ -71,7 +82,6 @@ app.get('/notifications', async (req, res) => {
     let notifications = await Notification.queryPage(paginate, where, {
       created_at: 'DESC'
     });
-    // 加载发起者信息
     for (let n of notifications) {
       if (n.actor_id) {
         n.actor = await User.findById(n.actor_id);
@@ -91,8 +101,6 @@ app.get('/notifications', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ POST /notification/:id/read 标记单条已读 ============
 app.post('/notification/:id/read', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
@@ -107,15 +115,12 @@ app.post('/notification/:id/read', async (req, res) => {
       n.read_at = parseInt((new Date()).getTime() / 1000);
       await n.save();
     }
-    // 直接跳转到 source_url(如果有),否则回 /notifications
     res.redirect(n.source_url || syzoj.utils.makeUrl(['notifications']));
   } catch (e) {
     syzoj.log(e);
     res.render('error', { err: e });
   }
 });
-
-// ============ POST /notifications/read-all 全部已读 ============
 app.post('/notifications/read-all', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
@@ -138,8 +143,6 @@ app.post('/notifications/read-all', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ POST /notification/:id/delete 删除单条 ============
 app.post('/notification/:id/delete', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
@@ -156,4 +159,3 @@ app.post('/notification/:id/delete', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-

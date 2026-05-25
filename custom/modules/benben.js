@@ -13,25 +13,15 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024;  // 5MB
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 try { fs.mkdirSync(BENBEN_UPLOAD_DIR, { recursive: true }); } catch (e) {}
-
-// ============ 工具:能否查看所有犇犇(admin + manage_user) ============
 function canSeeAllBenben(user) {
-  if (!user) return false;
-  if (user.is_admin) return true;
-  if (user.privileges && user.privileges.includes('manage_user')) return true;
-  return false;
+  return syzoj.authz && syzoj.authz.has(user, 'moderate_community');
 }
-
-// ============ 工具:能否删除某条犇犇 ============
 function canDeleteBenben(viewer, post) {
   if (!viewer) return false;
   if (viewer.id === post.user_id) return true;
   if (canSeeAllBenben(viewer)) return true;
   return false;
 }
-
-// ============ 工具:@ 提及解析 ============
-// 提取文本中的 @username,返回 [{name, userId}, ...]
 async function parseMentions(text) {
   if (!text) return [];
   let regex = /@([a-zA-Z0-9_\u4e00-\u9fa5\-]{1,32})/g;
@@ -48,27 +38,19 @@ async function parseMentions(text) {
   return mentions;
 }
 syzoj.utils.parseMentions = parseMentions;
-
-// ============ 工具:渲染犇犇内容(把 @xxx 转链接) ============
-// mentionMap: {username: userId},如果没提供则 @xxx 渲染为纯文本
 function renderBenbenContent(text, mentionMap) {
   if (!text) return '';
   let escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  // @ 提及转链接
   escaped = escaped.replace(/@([a-zA-Z0-9_\u4e00-\u9fa5\-]{1,32})/g, function(match, name) {
     if (mentionMap && mentionMap[name]) {
       return '<a href="/user/' + mentionMap[name] + '" class="benben-mention">@' + name + '</a>';
     }
-    // 无匹配用户,纯文本显示
     return '<span class="benben-mention" style="color:#aaa">@' + name + '</span>';
   });
-  // 换行
   escaped = escaped.replace(/\n/g, '<br>');
   return escaped;
 }
 syzoj.utils.renderBenbenContent = renderBenbenContent;
-
-// ============ 工具:加载犇犇的关联数据(作者、图片、回复数等) ============
 async function enrichPost(post) {
   post.user = await User.findById(post.user_id);
   let conn = require('typeorm').getConnection();
@@ -78,12 +60,10 @@ async function enrichPost(post) {
     url: '/self/benben/' + i.filename,
     original_name: i.original_name
   }));
-  // 预解析 @ 提及映射
   let mentions = await parseMentions(post.content);
   let mentionMap = {};
   for (let m of mentions) mentionMap[m.name] = m.userId;
   post.contentRendered = renderBenbenContent(post.content, mentionMap);
-  // 回复数(仅算未删除的)
   if (!post.reply_to) {
     let cntRows = await conn.query(
       'SELECT COUNT(*) AS cnt FROM benben_post WHERE reply_to = ? AND is_deleted = 0',
@@ -93,8 +73,6 @@ async function enrichPost(post) {
   }
   return post;
 }
-
-// ============ POST /benben/new:发布 ============
 app.post('/benben/new', app.multer.array('images', MAX_IMAGES), async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
@@ -106,11 +84,8 @@ app.post('/benben/new', app.multer.array('images', MAX_IMAGES), async (req, res)
     if (replyTo) {
       let parent = await BenbenPost.findById(replyTo);
       if (!parent || parent.is_deleted) throw new ErrorMessage('被回复的犇犇不存在或已删除。');
-      // 不允许嵌套:如果父级已经是回复,把 reply_to 改为父级的 reply_to(回到原创)
       if (parent.reply_to) replyTo = parent.reply_to;
     }
-
-    // 创建犇犇
     let post = await BenbenPost.create();
     post.user_id = res.locals.user.id;
     post.content = content;
@@ -118,8 +93,6 @@ app.post('/benben/new', app.multer.array('images', MAX_IMAGES), async (req, res)
     post.is_deleted = 0;
     post.created_at = parseInt((new Date()).getTime() / 1000);
     await post.save();
-
-    // 处理图片上传(仅原创犇犇支持,回复不传图)
     if (!replyTo && req.files && req.files.length > 0) {
       for (let i = 0; i < Math.min(req.files.length, MAX_IMAGES); i++) {
         let file = req.files[i];
@@ -152,8 +125,6 @@ app.post('/benben/new', app.multer.array('images', MAX_IMAGES), async (req, res)
         await img.save();
       }
     }
-
-    // @ 提及触发通知
     try {
       let mentions = await parseMentions(content);
       for (let m of mentions) {
@@ -169,8 +140,6 @@ app.post('/benben/new', app.multer.array('images', MAX_IMAGES), async (req, res)
         });
       }
     } catch (e) { syzoj.log('[benben] @ mention notify failed: ' + e.message); }
-
-    // 如果是回复,通知被回复者
     if (replyTo) {
       try {
         let parent = await BenbenPost.findById(replyTo);
@@ -194,8 +163,6 @@ app.post('/benben/new', app.multer.array('images', MAX_IMAGES), async (req, res)
     res.render('error', { err: e });
   }
 });
-
-// ============ POST /benben/:id/delete:删除(软删除) ============
 app.post('/benben/:id/delete', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
@@ -211,15 +178,11 @@ app.post('/benben/:id/delete', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ GET /benben/:id:单条犇犇详情(含回复) ============
 app.get('/benben/:id', async (req, res) => {
   try {
     let id = parseInt(req.params.id);
     let post = await BenbenPost.findById(id);
     if (!post || post.is_deleted) throw new ErrorMessage('犇犇不存在或已被删除。');
-
-    // 权限:作者本人 + 关注作者者 + admin/manage_user 才能看
     let viewer = res.locals.user;
     let canSee = false;
     if (viewer && viewer.id === post.user_id) canSee = true;
@@ -231,8 +194,6 @@ app.get('/benben/:id', async (req, res) => {
     if (!canSee) throw new ErrorMessage('您没有权限查看此犇犇。');
 
     await enrichPost(post);
-
-    // 加载回复列表
     let conn = require('typeorm').getConnection();
     let replyRows = await conn.query(
       'SELECT id FROM benben_post WHERE reply_to = ? AND is_deleted = 0 ORDER BY created_at ASC',
@@ -257,9 +218,6 @@ app.get('/benben/:id', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ GET /api/benben/feed:信息流 API ============
-// query: tab=following|mine|all, page, pageSize
 app.get('/api/benben/feed', async (req, res) => {
   try {
     if (!res.locals.user) {
@@ -275,7 +233,6 @@ app.get('/api/benben/feed', async (req, res) => {
     let total = 0;
 
     if (tab === 'mine') {
-      // 我发布的(仅原创,不含回复)
       let cntRows = await conn.query(
         'SELECT COUNT(*) AS cnt FROM benben_post WHERE user_id = ? AND reply_to IS NULL AND is_deleted = 0',
         [viewerId]
@@ -290,7 +247,6 @@ app.get('/api/benben/feed', async (req, res) => {
         if (p) { await enrichPost(p); posts.push(p); }
       }
     } else if (tab === 'all' && canSeeAllBenben(res.locals.user)) {
-      // admin 全部犇犇
       let cntRows = await conn.query(
         'SELECT COUNT(*) AS cnt FROM benben_post WHERE reply_to IS NULL AND is_deleted = 0'
       );
@@ -304,7 +260,6 @@ app.get('/api/benben/feed', async (req, res) => {
         if (p) { await enrichPost(p); posts.push(p); }
       }
     } else {
-      // 我关注的人 + 我自己
       let cntRows = await conn.query(`
         SELECT COUNT(*) AS cnt FROM benben_post p
         WHERE p.is_deleted = 0 AND p.reply_to IS NULL
@@ -324,8 +279,6 @@ app.get('/api/benben/feed', async (req, res) => {
         if (p) { await enrichPost(p); posts.push(p); }
       }
     }
-
-    // 返回 JSON
     res.json({
       total: total,
       page: page,
@@ -351,4 +304,3 @@ app.get('/api/benben/feed', async (req, res) => {
     res.json({ posts: [], error: e.message });
   }
 });
-

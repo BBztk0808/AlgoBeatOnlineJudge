@@ -3,8 +3,16 @@
 <style>
 #avatar_container:before {
     content: "";
-    display: block;
-    padding-top: 100%;
+    display: none;
+}
+#avatar_container {
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+}
+#avatar_container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 </style>
 <div class="padding">
@@ -22,7 +30,7 @@
                         </div>
                     </div>
                     <% } %>
-                    <img style="margin-top: -100%; " src="<%= syzoj.utils.gravatar(show_user.email, 1000) %>">
+                    <img src="<%= syzoj.utils.gravatar(show_user.email, 1000) %>">
                 </div>
                 <div class="content">
                     <div class="header"><%- syzoj.utils.renderUsername(show_user, { noLink: true }) %> <% if (show_user.sex == 1) { %><i class="man icon"></i><% } else if (show_user.sex == -1) { %><i class="woman icon"></i><% } %></div>
@@ -140,9 +148,7 @@
 
                 </div>
 
-                <%
-                // ============ Hit 值卡片数据准备 ============
-                let hitScores = (syzoj.userHitScores && syzoj.userHitScores.get(show_user.id)) || null;
+                <%                let hitScores = (syzoj.userHitScores && syzoj.userHitScores.get(show_user.id)) || null;
                 let hitHidden = (syzoj.userHitHidden && syzoj.userHitHidden.has(show_user.id));
                 let hitTier = 'gray';
                 let hitTierLabel = '萌新';
@@ -362,8 +368,8 @@
                                     <tr>
                                         <td><%= history.contestName %></td>
                                         <td><%= history.rank != null ? history.rank + " / " + history.participants : '' %></td>
-                                        <td><%= history.value %> 
-                                            <% if(history.delta != null) { %> 
+                                        <td><%= history.value %>
+                                            <% if(history.delta != null) { %>
                                                 <span class="<%= history.delta >= 0 ? 'rating_up' : 'rating_down' %>">
                                                 (<%= (history.delta < 0 ? '' : '+') + history.delta %>)
                                             <% } %>

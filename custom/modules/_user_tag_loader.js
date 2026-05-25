@@ -1,4 +1,3 @@
-// 在 /user/:id/edit 路由前预加载 tag 状态到 res.locals(模板内不能 await)
 let UserTag = syzoj.model('user-tag');
 
 app.use('/user/:id/edit', async (req, res, next) => {
@@ -8,8 +7,6 @@ app.use('/user/:id/edit', async (req, res, next) => {
 
     let editedId = parseInt(req.params.id);
     if (!editedId || isNaN(editedId)) return next();
-
-    // 仅本人才查 tag 状态(管理员代编辑别人时不显示这个段,避免越权)
     if (editedId !== res.locals.user.id) {
       res.locals.myTagState = null;
       res.locals.myTagIsCheater = false;

@@ -11,7 +11,6 @@
   <h2><i class="image icon"></i>首页 Banner 管理</h2>
   <p style="color: #666;">在此上传、管理首页轮播图。支持 JPG / PNG / WebP / GIF,最大 5MB。</p>
 
-  <!-- ============ 上传新 banner ============ -->
   <div class="ui segment" style="background: #f9f9f9;">
     <h4 style="margin-top: 0;"><i class="cloud upload icon"></i>上传新 Banner</h4>
     <form class="ui form" method="post" action="<%= syzoj.utils.makeUrl(['admin', 'banner', 'new']) %>" enctype="multipart/form-data">
@@ -37,7 +36,6 @@
     </form>
   </div>
 
-  <!-- ============ 已有 banner 列表 ============ -->
   <h3 style="margin-top: 30px;">现有 Banner</h3>
   <% if (!banners || banners.length === 0) { %>
     <div class="ui placeholder segment">

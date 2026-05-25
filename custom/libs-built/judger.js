@@ -252,7 +252,7 @@ module.exports.judge = async function (judge_state, problem, priority) {
     });
 
     return vjudge(judge_state, problem, async progress => {
-      console.log(progress);
+      if (process.env.SYZOJ_DEBUG_JUDGE_PROGRESS === '1') console.log(progress);
       if (progress.type === interface.ProgressReportType.Compiled) {
         progressPusher.updateCompileStatus(progress.taskId, progress.progress);
       } else if (progress.type === interface.ProgressReportType.Progress) {

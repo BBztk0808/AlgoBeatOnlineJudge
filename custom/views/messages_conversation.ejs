@@ -30,14 +30,14 @@
       </div>
     </div>
   <% } else { %>
-    <div class="ui segment" style="background: #fafafa; max-height: 600px; overflow-y: auto;">
+    <div class="ui segment ab-chat-log">
       <% for (let m of messages) { %>
         <div style="display: flex; <% if (m.is_self) { %>justify-content: flex-end;<% } %> margin-bottom: 12px; align-items: flex-start;">
           <% if (!m.is_self) { %>
             <img src="<%= syzoj.utils.gravatar(partner.email, 80) %>"
                  style="width: 36px; height: 36px; border-radius: 50%; margin-right: 8px; object-fit: cover; flex-shrink: 0;">
           <% } %>
-          <div style="max-width: 70%;">
+          <div class="ab-chat-bubble">
             <div style="
               padding: 8px 12px;
               border-radius: 12px;
@@ -66,7 +66,7 @@
     </div>
   <% } %>
 
-  <!-- 回复区 -->
+
   <% if (canReply) { %>
     <form class="ui form" method="post"
           action="<%= syzoj.utils.makeUrl(['messages', 'with', partner.id, 'send']) %>"

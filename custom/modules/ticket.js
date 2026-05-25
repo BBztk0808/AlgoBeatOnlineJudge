@@ -1,4 +1,3 @@
-// 工单系统:6 大类工单(题目/比赛/文章/用户/举报/综合),用户创建+管理员处理
 let Ticket = syzoj.model('ticket');
 let TicketReply = syzoj.model('ticket-reply');
 let TicketAttachment = syzoj.model('ticket-attachment');
@@ -14,11 +13,7 @@ let crypto = require('crypto');
 const TICKET_UPLOAD_DIR = '/app/custom-uploads/tickets';
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 const MAX_FILES_PER_TICKET = 10;
-
-// 确保目录存在
 try { fs.mkdirSync(TICKET_UPLOAD_DIR, { recursive: true }); } catch (e) {}
-
-// ============ 6 大类工单元数据 ============
 const TICKET_CATEGORIES = {
   problem: {
     label: '题目工单',
@@ -91,18 +86,11 @@ const TICKET_STATUS = {
   rejected: { label: '已驳回', color: 'red', icon: 'times circle' },
   closed: { label: '已关闭', color: 'grey', icon: 'lock' }
 };
-
-// 暴露到全局
 syzoj.TICKET_CATEGORIES = TICKET_CATEGORIES;
 syzoj.TICKET_STATUS = TICKET_STATUS;
 
-// ============ 工具函数 ============
-
 function isTicketAdmin(user) {
-  if (!user) return false;
-  if (user.is_admin) return true;
-  if (user.privileges && user.privileges.includes('manage_problem')) return true;
-  return false;
+  return syzoj.authz && syzoj.authz.has(user, 'manage_ticket');
 }
 
 function canViewTicket(user, ticket) {
@@ -143,8 +131,6 @@ async function getRecentCreatedCount(userId) {
     where: 'creator_id = ' + userId + ' AND created_at >= ' + cutoff
   });
 }
-
-// ============ 1. 工单列表 ============
 app.get('/tickets', async (req, res) => {
   try {
     if (!res.locals.user) {
@@ -226,8 +212,6 @@ app.get('/tickets', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 2. 创建工单(GET 显示选类型/填表单 + POST 提交) ============
 app.get('/ticket/new', async (req, res) => {
   try {
     if (!res.locals.user) {
@@ -331,8 +315,6 @@ app.post('/ticket/new', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 3. 工单详情 ============
 app.get('/ticket/:id', async (req, res) => {
   try {
     if (!res.locals.user) {
@@ -397,8 +379,6 @@ app.get('/ticket/:id', async (req, res) => {
     for (let r of replies) {
       r.contentRendered = await syzoj.utils.markdown(r.content || '');
     }
-
-    // 加载附件
     let attachments = await TicketAttachment.createQueryBuilder()
       .where('ticket_id = :id', { id: ticket.id })
       .orderBy('created_at', 'ASC')
@@ -436,8 +416,6 @@ app.get('/ticket/:id', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 4. 添加回复 ============
 app.post('/ticket/:id/reply', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
@@ -482,8 +460,6 @@ app.post('/ticket/:id/reply', async (req, res) => {
       ticket.status = 'in_progress';
     }
     await ticket.save();
-
-    // [v1.6.0] 通知工单创建者(仅公开回复)
     if (!isInternal && ticket.creator_id !== res.locals.user.id) {
       try {
         await syzoj.utils.createNotification({
@@ -504,12 +480,10 @@ app.post('/ticket/:id/reply', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 5. admin 改状态 ============
 app.post('/ticket/:id/status', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
-    if (!isTicketAdmin(res.locals.user)) throw new ErrorMessage('您没有此操作权限。');
+    syzoj.authz.require(res.locals.user, 'manage_ticket', '您没有此操作权限。');
 
     let id = parseInt(req.params.id);
     let ticket = await Ticket.findById(id);
@@ -541,8 +515,6 @@ app.post('/ticket/:id/status', async (req, res) => {
     sysReply.is_status_change = true;
     sysReply.created_at = now;
     await sysReply.save();
-
-    // [v1.6.0] 通知工单创建者
     if (ticket.creator_id !== res.locals.user.id) {
       try {
         await syzoj.utils.createNotification({
@@ -556,6 +528,10 @@ app.post('/ticket/:id/status', async (req, res) => {
         });
       } catch (e) { syzoj.log('[notification] ticket_status_changed failed: ' + e.message); }
     }
+    await syzoj.audit.log(req, 'ticket.status_change', 'ticket', ticket.id, {
+      old_status: oldStatus,
+      new_status: newStatus
+    });
 
     res.redirect(syzoj.utils.makeUrl(['ticket', ticket.id]));
   } catch (e) {
@@ -563,12 +539,10 @@ app.post('/ticket/:id/status', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 6. admin 认领 ============
 app.post('/ticket/:id/assign', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
-    if (!isTicketAdmin(res.locals.user)) throw new ErrorMessage('您没有此操作权限。');
+    syzoj.authz.require(res.locals.user, 'manage_ticket', '您没有此操作权限。');
 
     let id = parseInt(req.params.id);
     let ticket = await Ticket.findById(id);
@@ -594,6 +568,11 @@ app.post('/ticket/:id/assign', async (req, res) => {
     sysReply.is_status_change = true;
     sysReply.created_at = now;
     await sysReply.save();
+    await syzoj.audit.log(req, 'ticket.assign', 'ticket', ticket.id, {
+      old_assignee_id: oldAssigneeId,
+      new_assignee_id: ticket.assignee_id,
+      status: ticket.status
+    });
 
     res.redirect(syzoj.utils.makeUrl(['ticket', ticket.id]));
   } catch (e) {
@@ -601,8 +580,6 @@ app.post('/ticket/:id/assign', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 7. 用户撤回工单 ============
 app.post('/ticket/:id/withdraw', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
@@ -639,37 +616,35 @@ app.post('/ticket/:id/withdraw', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 8. admin 删除工单 ============
 app.post('/ticket/:id/delete', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
-    if (!res.locals.user.is_admin) throw new ErrorMessage('仅超级管理员可删除工单。');
+    syzoj.authz.require(res.locals.user, 'super_admin', '仅超级管理员可删除工单。');
 
     let id = parseInt(req.params.id);
     let ticket = await Ticket.findById(id);
     if (!ticket) throw new ErrorMessage('无此工单。');
-
-    // 删附件文件
     let atts = await TicketAttachment.createQueryBuilder()
       .where('ticket_id = :id', { id: ticket.id })
       .getMany();
     for (let a of atts) {
       try { fs.unlinkSync(path.join(TICKET_UPLOAD_DIR, a.filename)); } catch(e) {}
     }
-    // 删附件记录
     await TicketAttachment.createQueryBuilder()
       .delete()
       .where('ticket_id = :id', { id: ticket.id })
       .execute();
-
-    // 删回复
     await TicketReply.createQueryBuilder()
       .delete()
       .where('ticket_id = :id', { id: ticket.id })
       .execute();
 
     await ticket.destroy();
+    await syzoj.audit.log(req, 'ticket.delete', 'ticket', id, {
+      title: ticket.title,
+      category: ticket.category,
+      creator_id: ticket.creator_id
+    });
 
     res.redirect(syzoj.utils.makeUrl(['tickets']));
   } catch (e) {
@@ -677,8 +652,6 @@ app.post('/ticket/:id/delete', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 9. 关联对象搜索 API ============
 app.get('/api/ticket-relation-search', async (req, res) => {
   try {
     if (!res.locals.user) {
@@ -752,8 +725,6 @@ app.get('/api/ticket-relation-search', async (req, res) => {
     res.json({ results: [] });
   }
 });
-
-// ============ 10. 上传附件(用 SYZOJ 自带的 app.multer) ============
 app.post('/ticket/:id/upload', app.multer.array('attachments', MAX_FILES_PER_TICKET), async (req, res) => {
   let savedFiles = [];
   try {
@@ -777,8 +748,6 @@ app.post('/ticket/:id/upload', app.multer.array('attachments', MAX_FILES_PER_TIC
     if (!req.files || req.files.length === 0) {
       return res.json({ ok: false, message: '未上传文件。' });
     }
-
-    // 校验单文件大小
     for (let f of req.files) {
       if (f.size > MAX_FILE_SIZE) {
         for (let f2 of req.files) { try { fs.unlinkSync(f2.path); } catch(e){} }
@@ -803,7 +772,6 @@ app.post('/ticket/:id/upload', app.multer.array('attachments', MAX_FILES_PER_TIC
       try {
         fs.renameSync(f.path, finalPath);
       } catch (e) {
-        // 跨文件系统:先 copy 后 unlink
         fs.copyFileSync(f.path, finalPath);
         try { fs.unlinkSync(f.path); } catch(err){}
       }
@@ -833,8 +801,6 @@ app.post('/ticket/:id/upload', app.multer.array('attachments', MAX_FILES_PER_TIC
     res.status(500).json({ ok: false, message: e.message || '上传失败' });
   }
 });
-
-// ============ 11. 下载附件 ============
 app.get('/ticket-attachment/:id', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
@@ -869,8 +835,6 @@ app.get('/ticket-attachment/:id', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 12. 删除附件 ============
 app.post('/ticket-attachment/:id/delete', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');

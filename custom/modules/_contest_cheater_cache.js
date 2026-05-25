@@ -1,10 +1,7 @@
-// 全局缓存:每个比赛中有作弊提交的用户集合
-// 结构:Map<contestId(number), Set<userId(number)>>
 syzoj.contestCheaterMap = new Map();
 
 async function refreshContestCheaterCache() {
   try {
-    // 用 raw SQL 绕过 typeorm 怪行为
     let conn = require('typeorm').getConnection();
     let rows = await conn.query(`
       SELECT DISTINCT js.user_id, js.type_info AS contest_id
@@ -25,10 +22,6 @@ async function refreshContestCheaterCache() {
     syzoj.log('[contest-cheater-cache] refresh failed: ' + e.message);
   }
 }
-
-// 启动 8 秒后首次加载,然后每分钟刷新
 setTimeout(refreshContestCheaterCache, 8 * 1000);
 setInterval(refreshContestCheaterCache, 60 * 1000);
-
-// 暴露手动触发(标记作弊后立即调用)
 syzoj.utils.refreshContestCheaterCache = refreshContestCheaterCache;

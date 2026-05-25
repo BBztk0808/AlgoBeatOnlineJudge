@@ -45,11 +45,7 @@ Vue.component('submission-item', {
     userTierClass() {
       var uid = this.data.info.userId;
       var tiers = window.__SYZOJ_USER_TIERS || {};
-      var cheaters = window.__SYZOJ_CHEATER_USER_IDS || [];
-      // admin tier 不受 cheater 影响(tier 数据由 header.ejs 注入,admin 已在 _tierMap 中)
-      if (tiers[uid] === 'admin') return 'username-tier-admin';
-      // 非 admin + cheater → 棕色
-      if (cheaters.indexOf(uid) !== -1) return 'username-tier-cheater';
+      var cheaters = window.__SYZOJ_CHEATER_USER_IDS || [];      if (tiers[uid] === 'admin') return 'username-tier-admin';      if (cheaters.indexOf(uid) !== -1) return 'username-tier-cheater';
       var tier = tiers[uid] || 'default';
       return 'username-tier-' + tier;
     },
@@ -57,13 +53,7 @@ Vue.component('submission-item', {
       var uid = this.data.info.userId;
       var tiers = window.__SYZOJ_USER_TIERS || {};
       var cheaters = window.__SYZOJ_CHEATER_USER_IDS || [];
-      var tags = window.__SYZOJ_USER_TAGS || {};
-
-      // admin 优先(无视 cheater)
-      var isAdmin = (tiers[uid] === 'admin');
-
-      // 非 admin + cheater → 强制作弊者 tag
-      if (!isAdmin && cheaters.indexOf(uid) !== -1) {
+      var tags = window.__SYZOJ_USER_TAGS || {};      var isAdmin = (tiers[uid] === 'admin');      if (!isAdmin && cheaters.indexOf(uid) !== -1) {
         return '<span class="user-name-tag tag-tier-cheater">作弊者</span>';
       }
 
@@ -121,7 +111,7 @@ Vue.component('submission-item', {
   <% } else { %>
   <td><b>#{{ data.info.submissionId }}</b></td>
   <% } %>
-  <td ref="problemLabel"><a ref="problemLabelTextFit" style="width: 230px; height: 22px; display: block; margin: 0 auto; line-height: 22px;" :href="problemLink"><b>#{{ config.inContest ? alpha(data.info.problemId) : data.info.problemId }}.</b> {{ data.info.problemName }}</a></td>
+  <td ref="problemLabel"><a ref="problemLabelTextFit" class="ab-submission-problem-link" :href="problemLink"><b>#{{ config.inContest ? alpha(data.info.problemId) : data.info.problemId }}.</b> {{ data.info.problemName }}</a></td>
   <% if (active === 'submissions') { %>
   <td>
     <template v-if="cheatedLabel">

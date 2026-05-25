@@ -1,33 +1,22 @@
 let PrivateMessage = syzoj.model('private-message');
 let UserMessageSetting = syzoj.model('user-message-setting');
 let User = syzoj.model('user');
-
-// ---------- 工具函数 ----------
-
-// 检查能否给某用户发消息
 async function canSendTo(sender, receiver) {
   if (!sender) return { ok: false, reason: '请登录后继续。' };
   if (!receiver) return { ok: false, reason: '收件人不存在。' };
   if (sender.id === receiver.id) return { ok: false, reason: '不能给自己发送站内信。' };
-
-  // 检查发送方是否已验证邮箱(管理员豁免)
   if (!sender.is_admin) {
     if (!await syzoj.utils.isEmailVerified(sender.id)) {
       return { ok: false, reason: '请先验证邮箱后再发送站内信。' };
     }
   }
-
-  // 管理员可以无视屏蔽设置
   if (sender.is_admin) return { ok: true };
-  // 检查接收方屏蔽设置
   let setting = await UserMessageSetting.findOne({ where: { user_id: receiver.id } });
   if (setting && setting.disable_messages) {
     return { ok: false, reason: '该用户已关闭站内信。' };
   }
   return { ok: true };
 }
-
-// 给某用户(可能不存在)创建/更新设置记录
 async function getOrCreateSetting(userId) {
   let s = await UserMessageSetting.findOne({ where: { user_id: userId } });
   if (!s) {
@@ -37,8 +26,6 @@ async function getOrCreateSetting(userId) {
   }
   return s;
 }
-
-// 当前未读数
 async function countUnread(userId) {
   return await PrivateMessage.count({
     receiver_id: userId,
@@ -46,20 +33,12 @@ async function countUnread(userId) {
     receiver_deleted: false
   });
 }
-
-// ---------- 路由 ----------
-
-// ============ 收件箱(按对话方分组) ============
 app.get('/messages', async (req, res) => {
   try {
     if (!res.locals.user) {
       throw new ErrorMessage('请登录后继续。', { '登录': syzoj.utils.makeUrl(['login'], { 'url': req.originalUrl }) });
     }
     let myId = res.locals.user.id;
-
-    // 用 SQL 直接聚合"按对方分组"的最新消息+未读数
-    // 使用 createQueryBuilder 的 raw query 能力
-    // 思路:对每条消息计算 partner_id = (sender_id == myId ? receiver_id : sender_id),按 partner_id 分组取最新
     let qb = PrivateMessage.createQueryBuilder('m')
       .select('CASE WHEN m.sender_id = :myId THEN m.receiver_id ELSE m.sender_id END', 'partner_id')
       .addSelect('MAX(m.public_time)', 'last_time')
@@ -70,16 +49,12 @@ app.get('/messages', async (req, res) => {
       .orderBy('last_time', 'DESC');
 
     let raws = await qb.getRawMany();
-
-    // 加载每个对话方的用户信息 + 最后一条消息内容
     let conversations = [];
     for (let r of raws) {
       let partnerId = parseInt(r.partner_id);
       if (!partnerId) continue;
       let partner = await User.findById(partnerId);
       if (!partner) continue;
-
-      // 最后一条消息(可见的:发送者删除则发送方看不到,接收者删除则接收方看不到)
       let lastMsg = await PrivateMessage.findOne({
         where: [
           { sender_id: myId, receiver_id: partnerId, sender_deleted: false },
@@ -103,8 +78,6 @@ app.get('/messages', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 与某用户的对话历史 ============
 app.get('/messages/with/:uid', async (req, res) => {
   try {
     if (!res.locals.user) {
@@ -118,8 +91,6 @@ app.get('/messages/with/:uid', async (req, res) => {
 
     let partner = await User.findById(partnerId);
     if (!partner) throw new ErrorMessage('对方用户不存在。');
-
-    // 查询双方互发的所有消息
     let qb = PrivateMessage.createQueryBuilder('m')
       .where(
         '((m.sender_id = :myId AND m.receiver_id = :partnerId AND m.sender_deleted = 0)' +
@@ -129,14 +100,10 @@ app.get('/messages/with/:uid', async (req, res) => {
       .orderBy('m.public_time', 'ASC');
 
     let messages = await qb.getMany();
-
-    // 给前端用的简化字段
     for (let m of messages) {
       m.is_self = (m.sender_id === myId);
       m.contentRendered = await syzoj.utils.markdown(m.content || '');
     }
-
-    // 把所有未读消息标记为已读
     let unreadIds = messages.filter(m => !m.is_self && !m.is_read).map(m => m.id);
     if (unreadIds.length > 0) {
       await PrivateMessage.createQueryBuilder()
@@ -145,7 +112,6 @@ app.get('/messages/with/:uid', async (req, res) => {
         .where('id IN (:...ids)', { ids: unreadIds })
         .execute();
     }
-    // 检查能否回复(对方是否屏蔽)
     let canReply = await canSendTo(res.locals.user, partner);
 
     res.render('messages_conversation', {
@@ -159,8 +125,6 @@ app.get('/messages/with/:uid', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 发送消息给某用户 ============
 app.post('/messages/with/:uid/send', async (req, res) => {
   try {
     if (!res.locals.user) {
@@ -194,15 +158,11 @@ app.post('/messages/with/:uid/send', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 发起新对话页 ============
 app.get('/messages/new', async (req, res) => {
   try {
     if (!res.locals.user) {
       throw new ErrorMessage('请登录后继续。', { '登录': syzoj.utils.makeUrl(['login'], { 'url': req.originalUrl }) });
     }
-
-    // 支持 ?to=xxx 预填收件人(uid 或 username)
     let prefill = (req.query.to || '').trim();
 
     res.render('messages_new', {
@@ -213,16 +173,12 @@ app.get('/messages/new', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// 处理"发起新对话"表单提交:解析收件人 -> 重定向到 send 路由
 app.post('/messages/new', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请登录后继续。');
 
     let to = (req.body.to || '').trim();
     if (!to) throw new ErrorMessage('请填写收件人。');
-
-    // 先尝试按 uid 查
     let receiver = null;
     if (/^\d+$/.test(to)) {
       receiver = await User.findById(parseInt(to));
@@ -256,8 +212,6 @@ app.post('/messages/new', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 用户搜索 API(给前端 autocomplete 用) ============
 app.get('/api/search-user', async (req, res) => {
   try {
     if (!res.locals.user) return res.json({ results: [] });
@@ -265,12 +219,10 @@ app.get('/api/search-user', async (req, res) => {
     if (!q) return res.json({ results: [] });
 
     let users = [];
-    // 按 uid 精确
     if (/^\d+$/.test(q)) {
       let u = await User.findById(parseInt(q));
       if (u && u.id !== res.locals.user.id) users.push(u);
     }
-    // 按 username 模糊查询(取前 10 条)
     let qb = User.createQueryBuilder()
       .where('username LIKE :name', { name: `%${q}%` })
       .andWhere('id != :myId', { myId: res.locals.user.id })
@@ -291,8 +243,6 @@ app.get('/api/search-user', async (req, res) => {
     res.json({ results: [] });
   }
 });
-
-// ============ 删除单条消息(软删) ============
 app.post('/messages/:mid/delete', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请登录后继续。');
@@ -308,8 +258,6 @@ app.post('/messages/:mid/delete', async (req, res) => {
     } else {
       throw new ErrorMessage('您没有权限删除此消息。');
     }
-
-    // 双方都删了就真删
     if (msg.sender_deleted && msg.receiver_deleted) {
       await msg.destroy();
     } else {
@@ -323,22 +271,16 @@ app.post('/messages/:mid/delete', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 删除整个对话历史(对自己软删) ============
 app.post('/messages/with/:uid/delete-all', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请登录后继续。');
     let myId = res.locals.user.id;
     let partnerId = parseInt(req.params.uid);
-
-    // 我发出的:sender_deleted = true
     await PrivateMessage.createQueryBuilder()
       .update()
       .set({ sender_deleted: true })
       .where('sender_id = :myId AND receiver_id = :partnerId', { myId, partnerId })
       .execute();
-
-    // 我收到的:receiver_deleted = true
     await PrivateMessage.createQueryBuilder()
       .update()
       .set({ receiver_deleted: true })
@@ -351,8 +293,6 @@ app.post('/messages/with/:uid/delete-all', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 标记某对话所有消息为已读 ============
 app.post('/messages/with/:uid/mark-read', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请登录后继续。');
@@ -372,8 +312,6 @@ app.post('/messages/with/:uid/mark-read', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ API:未读数 ============
 app.get('/api/messages/unread-count', async (req, res) => {
   try {
     if (!res.locals.user) return res.json({ count: 0 });
@@ -385,8 +323,6 @@ app.get('/api/messages/unread-count', async (req, res) => {
     res.json({ count: 0 });
   }
 });
-
-// ============ 设置页 GET ============
 app.get('/messages/settings', async (req, res) => {
   try {
     if (!res.locals.user) {
@@ -401,8 +337,6 @@ app.get('/messages/settings', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 设置页 POST ============
 app.post('/messages/settings', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请登录后继续。');

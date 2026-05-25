@@ -1,7 +1,5 @@
 let UserFollow = syzoj.model('user-follow');
 let User = syzoj.model('user');
-
-// ============ 通用工具:获取关系状态 ============
 async function getFollowRelation(viewerId, targetId) {
   if (!viewerId || viewerId === targetId) {
     return { iFollow: false, theyFollow: false, mutual: false };
@@ -22,8 +20,6 @@ async function getFollowRelation(viewerId, targetId) {
 }
 
 syzoj.utils.getFollowRelation = getFollowRelation;
-
-// ============ 通用工具:计数 ============
 async function countFollowing(userId) {
   return await UserFollow.count({ follower_id: userId });
 }
@@ -32,8 +28,6 @@ async function countFollowers(userId) {
 }
 syzoj.utils.countFollowing = countFollowing;
 syzoj.utils.countFollowers = countFollowers;
-
-// ============ POST /user/:id/follow:关注 ============
 app.post('/user/:id/follow', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
@@ -48,7 +42,6 @@ app.post('/user/:id/follow', async (req, res) => {
       where: { follower_id: res.locals.user.id, followee_id: targetId }
     });
     if (existing) {
-      // 已关注 → 不重复创建,直接跳转
       return res.redirect(req.body.return_url || syzoj.utils.makeUrl(['user', targetId]));
     }
 
@@ -64,8 +57,6 @@ app.post('/user/:id/follow', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ POST /user/:id/unfollow:取关 ============
 app.post('/user/:id/unfollow', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
@@ -85,8 +76,6 @@ app.post('/user/:id/unfollow', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ GET /user/:id/following:某用户关注的人列表 ============
 app.get('/user/:id/following', async (req, res) => {
   try {
     let uid = parseInt(req.params.id);
@@ -117,8 +106,6 @@ app.get('/user/:id/following', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ GET /user/:id/followers:某用户的粉丝列表 ============
 app.get('/user/:id/followers', async (req, res) => {
   try {
     let uid = parseInt(req.params.id);

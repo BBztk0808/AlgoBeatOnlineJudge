@@ -5,7 +5,6 @@
 function fmtDateLocal(ts) {
   if (!ts) return '';
   let d = new Date(ts * 1000);
-  // 转成 yyyy-MM-ddTHH:mm 格式给 datetime-local input
   let pad = (n) => n < 10 ? '0' + n : n;
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
     'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());

@@ -18,14 +18,14 @@
     <% } %>
   </div>
   <h1><%= article.title %></h1>
- 	<p style="margin-bottom: -5px; ">
+ 	<div class="ab-article-meta">
 	<img style="vertical-align: middle; margin-bottom: 2px; margin-right: 2px; " src="<%= syzoj.utils.gravatar(article.user.email, 34) %>" width="17" height="17">
 	<b style="margin-right: 30px; "><%- syzoj.utils.renderUsername(article.user) %></b>
 	<b style="margin-right: 30px; "><i class="calendar icon"></i> <%= syzoj.utils.formatDate(article.public_time) %></b>
 	<% if (article.public_time !== article.update_time) { %><b style="margin-right: 30px; "><i class="edit icon"></i> <%= syzoj.utils.formatDate(article.update_time) %></b><% } %>
         <% if (article.allowedEdit) { %>
-        <a style="margin-top: -4px; " class="ui mini right floated labeled icon button" href="<%= syzoj.utils.makeUrl(['article', article.id, 'edit']) %>"><i class="ui edit icon"></i>编辑</a>
-        <a style="margin-top: -4px; margin-right: 3px; " class="ui mini red right floated labeled icon button" onclick="$('#modal-delete').modal('show')"><i class="ui trash icon"></i>删除</a>
+        <a class="ui mini right floated labeled icon button" href="<%= syzoj.utils.makeUrl(['article', article.id, 'edit']) %>"><i class="ui edit icon"></i>编辑</a>
+        <a class="ui mini red right floated labeled icon button" onclick="$('#modal-delete').modal('show')"><i class="ui trash icon"></i>删除</a>
         <div class="ui basic modal right floated" id="modal-delete">
           <div class="ui icon header">
             <i class="trash icon"></i>
@@ -46,7 +46,7 @@
           </div>
         </div>
         <% } %>
- 	</p>
+ 	</div>
   <div class="ui existing segment">
 	  <div id="content" class="font-content"><%- article.content %></div>
   </div>

@@ -1,4 +1,3 @@
-// 用户名牌子(tag) 系统
 let UserTag = syzoj.model('user-tag');
 let User = syzoj.model('user');
 
@@ -6,10 +5,11 @@ syzoj.userTags = new Map();
 
 function hasAdminRole(user) {
   if (!user) return false;
-  if (user.is_admin) return true;
+  if (syzoj.authz && syzoj.authz.isSuperAdmin(user)) return true;
   if (user.privileges && (
     user.privileges.includes('manage_problem') ||
     user.privileges.includes('manage_problem_tag') ||
+    user.privileges.includes('manage_problemset') ||
     user.privileges.includes('manage_user')
   )) return true;
   return false;
@@ -32,26 +32,18 @@ function calcUserTier(userId, isAdminFlag) {
 
 async function refreshUserTagsCache() {
   try {
-    // 拿所有未禁用的记录(包括 is_visible=false 的,用于判断"显式存在")
     let allRows = await UserTag.createQueryBuilder()
       .where('is_disabled = FALSE')
       .getMany();
-
-    // existsForUid: 数据库里"显式"有该用户记录的 user_id 集合
     let existsForUid = new Set(allRows.map(r => r.user_id));
 
     let newCache = new Map();
-
-    // 只把 is_visible=true 且 tag_text 非空的记录加入缓存
     for (let r of allRows) {
       if (r.is_visible && r.tag_text && r.tag_text.length > 0) {
         let tier = calcUserTier(r.user_id, false);
         newCache.set(r.user_id, { text: r.tag_text, tier: tier });
       }
     }
-
-    // admin fallback: adminUserIds 里且数据库中"完全没有显式记录"的用户 → "管理员"
-    // 数据库里有记录的 admin(无论 is_visible 是 true 还是 false)都尊重数据库
     if (syzoj.adminUserIds && syzoj.adminUserIds.size > 0) {
       for (let uid of syzoj.adminUserIds) {
         if (!existsForUid.has(uid) && !newCache.has(uid)) {
@@ -133,9 +125,7 @@ app.post('/api/my-tag', async (req, res) => {
 
 app.get('/admin/user-tags', async (req, res) => {
   try {
-    if (!res.locals.user || !res.locals.user.is_admin) {
-      throw new ErrorMessage('仅超级管理员可访问。');
-    }
+    syzoj.authz.require(res.locals.user, 'manage_user_tag', '仅超级管理员可访问。');
 
     let records = await UserTag.createQueryBuilder()
       .orderBy('user_id', 'ASC')
@@ -166,9 +156,7 @@ app.get('/admin/user-tags', async (req, res) => {
 
 app.post('/admin/user-tags/grant', async (req, res) => {
   try {
-    if (!res.locals.user || !res.locals.user.is_admin) {
-      throw new ErrorMessage('仅超级管理员可操作。');
-    }
+    syzoj.authz.require(res.locals.user, 'manage_user_tag', '仅超级管理员可操作。');
 
     let username = (req.body.username || '').trim();
     let uidQuery = (req.body.user_id || '').trim();
@@ -210,6 +198,9 @@ app.post('/admin/user-tags/grant', async (req, res) => {
     }
 
     await refreshUserTagsCache();
+    await syzoj.audit.log(req, 'user_tag.grant', 'user', target.id, {
+      username: target.username
+    });
     res.redirect(syzoj.utils.makeUrl(['admin', 'user-tags']));
   } catch (e) {
     syzoj.log(e);
@@ -219,9 +210,7 @@ app.post('/admin/user-tags/grant', async (req, res) => {
 
 app.post('/admin/user-tags/:uid/disable', async (req, res) => {
   try {
-    if (!res.locals.user || !res.locals.user.is_admin) {
-      throw new ErrorMessage('仅超级管理员可操作。');
-    }
+    syzoj.authz.require(res.locals.user, 'manage_user_tag', '仅超级管理员可操作。');
 
     let uid = parseInt(req.params.uid);
     let target = await User.findById(uid);
@@ -252,6 +241,10 @@ app.post('/admin/user-tags/:uid/disable', async (req, res) => {
     await record.save();
 
     await refreshUserTagsCache();
+    await syzoj.audit.log(req, 'user_tag.disable', 'user', uid, {
+      username: target.username,
+      reason: record.disabled_reason
+    });
     res.redirect(syzoj.utils.makeUrl(['admin', 'user-tags']));
   } catch (e) {
     syzoj.log(e);
@@ -261,9 +254,7 @@ app.post('/admin/user-tags/:uid/disable', async (req, res) => {
 
 app.post('/admin/user-tags/:uid/enable', async (req, res) => {
   try {
-    if (!res.locals.user || !res.locals.user.is_admin) {
-      throw new ErrorMessage('仅超级管理员可操作。');
-    }
+    syzoj.authz.require(res.locals.user, 'manage_user_tag', '仅超级管理员可操作。');
 
     let uid = parseInt(req.params.uid);
     let record = await UserTag.findOne({ where: { user_id: uid } });
@@ -278,6 +269,7 @@ app.post('/admin/user-tags/:uid/enable', async (req, res) => {
     await record.save();
 
     await refreshUserTagsCache();
+    await syzoj.audit.log(req, 'user_tag.enable', 'user', uid, {});
     res.redirect(syzoj.utils.makeUrl(['admin', 'user-tags']));
   } catch (e) {
     syzoj.log(e);

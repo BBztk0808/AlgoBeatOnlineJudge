@@ -1,9 +1,9 @@
 <% this.title = '首页'; %>
+<% this.mainContainerClass = 'ab-home-container'; %>
 <% include header %>
 
 <div class="padding" style="padding: 16px 20px;">
 
-  <!-- ============ 顶部状态提示 ============ -->
   <% if (typeof pendingSolutionsCount !== 'undefined' && pendingSolutionsCount > 0) { %>
     <div class="ui yellow message" style="margin-bottom: 15px;">
       <i class="bell icon"></i>
@@ -12,7 +12,6 @@
     </div>
   <% } %>
 
-  <!-- ============ 公告弹窗(保留原逻辑) ============ -->
   <div id="announcement-modal-container"></div>
   <script>
   (function () {
@@ -103,9 +102,8 @@
   })();
   </script>
 
-  <!-- ============ 顶部:Banner 轮播 + 今日运势 + 近期比赛 ============ -->
   <div class="ui grid ab-home-top-grid" style="margin-bottom: 8px;">
-    <div class="eleven wide column">
+    <div class="eleven wide column ab-home-hero-column">
       <div class="ab-banner-wrap" id="ab-banner-wrap">
         <div class="ab-banner-empty" id="ab-banner-empty">加载中...</div>
         <button class="ab-banner-arrow left" id="ab-banner-prev" type="button" aria-label="上一张">‹</button>
@@ -114,13 +112,12 @@
       </div>
     </div>
 
-    <div class="five wide column">
+    <div class="five wide column ab-home-side-column">
 
-      <!-- 近期比赛(紧凑版) -->
-      <h4 class="ui top attached block header" style="margin-top: 14px;"><i class="ui calendar icon"></i>近期比赛</h4>
-      <div class="ui bottom attached segment" style="padding: 10px 12px; flex: 2;">
+      <h4 class="ui top attached block header ab-home-side-header"><i class="ui calendar icon"></i>近期比赛</h4>
+      <div class="ui bottom attached segment ab-home-side-panel ab-home-contests-panel">
         <% if (!contests || !contests.length) { %>
-          <div style="text-align: center; color: #999; padding: 8px 0;">暂无比赛</div>
+          <div class="ab-home-empty">暂无比赛</div>
         <% } else { %>
           <% for (let contest of contests) {
             let now = syzoj.utils.getCurrentDate();
@@ -145,29 +142,42 @@
         <% } %>
       </div>
 
-      <!-- 一言 -->
-      <h4 class="ui top attached block header" style="margin-top: 14px;"><i class="ui quote left icon"></i>一言（ヒトコト）</h4>
-      <div class="ui bottom attached center aligned segment" style="padding: 14px; flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0;">
+      <h4 class="ui top attached block header ab-home-side-header"><i class="ui quote left icon"></i>一言（ヒトコト）</h4>
+      <div class="ui bottom attached center aligned segment ab-home-side-panel ab-home-quote-panel">
         <div class="ui active centered inline loader" id="hitokoto-loader"></div>
+        <div class="ab-hitokoto-content" id="hitokoto-content"></div>
+        <div class="ab-hitokoto-from" id="hitokoto-from"></div>
         <script>
-        $.get('https://v1.hitokoto.cn/?c=a', function (data) {
-          if (typeof data === 'string') data = JSON.parse(data);
-          $('#hitokoto-loader').removeClass('active');
-          $('#hitokoto-content').css('display', '').text(data.hitokoto);
-          if (data.from) $('#hitokoto-from').css('display', '').text('——' + data.from);
-        });
+        (function () {
+          var fallbackText = '愿你写下的每一次尝试，都离 Accepted 更近一点。';
+          function showHitokoto(text, from) {
+            $('#hitokoto-loader').removeClass('active').hide();
+            $('#hitokoto-content').text(text || fallbackText).show();
+            if (from) $('#hitokoto-from').text('——' + from).show();
+            else $('#hitokoto-from').hide();
+          }
+          $.ajax({
+            url: 'https://v1.hitokoto.cn/?c=a',
+            dataType: 'json',
+            timeout: 2500
+          }).done(function (data) {
+            try {
+              if (typeof data === 'string') data = JSON.parse(data);
+              showHitokoto(data && data.hitokoto, data && data.from);
+            } catch (e) {
+              showHitokoto(fallbackText);
+            }
+          }).fail(function () {
+            showHitokoto(fallbackText);
+          });
+        })();
         </script>
-        <div style="font-size: 1em; line-height: 1.5em; display: none;" id="hitokoto-content"></div>
-        <div style="text-align: right; margin-top: 10px; font-size: 0.9em; color: #666; display: none;" id="hitokoto-from"></div>
       </div>
     </div>
   </div>
 
-
-
-  <!-- ============ 公告 + 右侧栏 ============ -->
-  <div class="ui grid" style="margin-top: 8px;">
-    <div class="eleven wide column">
+  <div class="ui grid ab-home-secondary-grid" style="margin-top: 8px;">
+    <div class="eleven wide column ab-home-main-column">
       <h4 class="ui top attached block header"><i class="ui info icon"></i>公告</h4>
       <div class="ui bottom attached segment">
         <table class="ui very basic table">
@@ -189,7 +199,7 @@
       </div>
     </div>
 
-    <div class="five wide column">
+    <div class="five wide column ab-home-lower-side-column">
       <h4 class="ui top attached block header"><i class="ui search icon"></i>搜索题目</h4>
       <div class="ui bottom attached segment">
         <form action="<%= syzoj.utils.makeUrl(['problems', 'search']) %>" method="get">
@@ -216,15 +226,15 @@
     </div>
   </div>
 
-  <!-- ============ 犇犇 widget ============ -->
-  <h4 class="ui top attached block header" style="margin-top: 8px;"><i class="ui comments icon"></i>犇犇</h4>
-  <div class="ui bottom attached segment" style="padding: 14px;">
-    <% include benben_feed %>
+  <div class="ab-home-benben-section">
+    <h4 class="ui top attached block header"><i class="ui comments icon"></i>犇犇</h4>
+    <div class="ui bottom attached segment" style="padding: 14px;">
+      <% include benben_feed %>
+    </div>
   </div>
 
 </div>
 
-<!-- ============ Banner 轮播 JS ============ -->
 <script>
 (function () {
   'use strict';
@@ -312,11 +322,8 @@
     render([]);
   });
 })();
-
-// 搜索框初始化(原有)
 $(function () {
   $('.ui.search').search({
-    debug: true,
     saveRemoteData: false,
     apiSettings: { url: '/api/v2/search/problems/{query}', cache: false },
     fields: { title: 'name' }

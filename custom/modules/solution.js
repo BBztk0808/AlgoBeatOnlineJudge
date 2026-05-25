@@ -3,8 +3,6 @@ let ProblemSolutionComment = syzoj.model('problem-solution-comment');
 let ProblemSolution = syzoj.model('problem-solution');
 let User = syzoj.model('user');
 let ProblemSolutionSetting = syzoj.model('problem-solution-setting');
-
-// ============ 题目下的题解列表 ============
 app.get('/problem/:pid/solutions', async (req, res) => {
   try {
     let pid = parseInt(req.params.pid);
@@ -15,14 +13,11 @@ app.get('/problem/:pid/solutions', async (req, res) => {
     }
 
     let user = res.locals.user;
-
-    // 普通用户只能看 accepted 的;管理员看所有;投稿人能看自己的所有
-    let canReview = user && (user.is_admin || await user.hasPrivilege('manage_problem'));
+    let canReview = syzoj.authz.has(user, 'manage_solution');
     let where;
     if (canReview) {
       where = { problem_id: pid };
     } else if (user) {
-      // 公开通过的 OR 自己投的
       where = [
         { problem_id: pid, status: 'accepted' },
         { problem_id: pid, user_id: user.id }
@@ -37,20 +32,14 @@ app.get('/problem/:pid/solutions', async (req, res) => {
     let solutions = await ProblemSolution.queryPage(paginate, where, {
       public_time: 'DESC'
     });
-
-    // 加载作者信息
     for (let sol of solutions) {
       sol.user = await User.findById(sol.user_id);
       sol.allowedEdit = await sol.isAllowedEditBy(res.locals.user);
     }
-    // 检查题目是否禁用了题解投稿
     let setting = await ProblemSolutionSetting.findOne({ where: { problem_id: pid } });
     let submissionDisabled = !!(setting && setting.disable_submission);
 
-    let canManageSetting = user && (user.is_admin || (user.privileges && user.privileges.includes('manage_problem')));
-
-    // 当前用户能否投稿(登录 + 没禁用 || 是审核者)
-    // 审核者也无法投稿,但他能看到关闭状态并切换
+    let canManageSetting = syzoj.authz.has(user, 'manage_solution_setting');
     let allowedPost = !!user && !submissionDisabled;
 
     res.render('solutions', {
@@ -66,8 +55,6 @@ app.get('/problem/:pid/solutions', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 跳转到新建页面 ============
 app.get('/problem/:pid/solution/new', async (req, res) => {
   try {
     if (!res.locals.user) {
@@ -82,15 +69,12 @@ app.get('/problem/:pid/solution/new', async (req, res) => {
     if (!await problem.isAllowedUseBy(res.locals.user)) {
       throw new ErrorMessage('您没有权限进行此操作。');
     }
-    // 检查题目是否禁用了题解投稿
     let setting = await ProblemSolutionSetting.findOne({ where: { problem_id: pid } });
     if (setting && setting.disable_submission) {
       throw new ErrorMessage('该题已关闭题解提交。', {
         '查看现有题解': syzoj.utils.makeUrl(['problem', pid, 'solutions'])
       });
     }
-    
-    // 检查邮箱是否已验证
     if (!await syzoj.utils.isEmailVerified(res.locals.user.id)) {
       throw new ErrorMessage('请先验证邮箱后再投稿题解。', {
         '前往验证': syzoj.utils.makeUrl(['user', res.locals.user.id, 'edit'])
@@ -103,8 +87,6 @@ app.get('/problem/:pid/solution/new', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 题解详情 ============
 app.get('/solution/:id', async (req, res) => {
   try {
     let id = parseInt(req.params.id);
@@ -122,7 +104,6 @@ app.get('/solution/:id', async (req, res) => {
     }
 
     solution.user = await User.findById(solution.user_id);
-    // [v1.6.0] 加载审核员信息
     if (solution.reviewer_id) {
       solution.reviewer = await User.findById(solution.reviewer_id);
     }
@@ -130,9 +111,7 @@ app.get('/solution/:id', async (req, res) => {
     solution.allowedComment = solution.isAllowedCommentBy(res.locals.user);
     solution.contentRendered = await syzoj.utils.markdown(solution.content || '');
 
-    let canReview = res.locals.user && (res.locals.user.is_admin || await res.locals.user.hasPrivilege('manage_problem'));
-
-    // 加载评论列表
+    let canReview = syzoj.authz.has(res.locals.user, 'manage_solution');
     let commentsCount = await ProblemSolutionComment.count({ solution_id: solution.id });
     let pageSize = (syzoj.config.page && syzoj.config.page.article_comment) || 10;
     let paginate = syzoj.utils.paginate(commentsCount, req.query.page, pageSize);
@@ -158,8 +137,6 @@ app.get('/solution/:id', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 编辑/新建页面 GET ============
 app.get('/solution/:id/edit', async (req, res) => {
   try {
     if (!res.locals.user) {
@@ -173,14 +150,12 @@ app.get('/solution/:id/edit', async (req, res) => {
     let problem;
 
     if (id === 0) {
-      // 新建
       let pid = parseInt(req.query.pid);
       problem = await Problem.findById(pid);
       if (!problem) throw new ErrorMessage('无此题目。');
       if (!await problem.isAllowedUseBy(res.locals.user)) {
         throw new ErrorMessage('您没有权限进行此操作。');
       }
-      // 检查题目是否禁用了题解投稿
       let setting = await ProblemSolutionSetting.findOne({ where: { problem_id: pid } });
       if (setting && setting.disable_submission) {
         throw new ErrorMessage('该题已关闭题解提交。');
@@ -192,7 +167,6 @@ app.get('/solution/:id/edit', async (req, res) => {
       solution.content = '';
       solution.allowedEdit = true;
     } else {
-      // 编辑
       solution = await ProblemSolution.findById(id);
       if (!solution) throw new ErrorMessage('无此题解。');
 
@@ -214,8 +188,6 @@ app.get('/solution/:id/edit', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 编辑/新建页面 POST ============
 app.post('/solution/:id/edit', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请登录后继续。');
@@ -225,7 +197,6 @@ app.post('/solution/:id/edit', async (req, res) => {
     let isNew = false;
 
     if (id === 0) {
-      // 新建
       let pid = parseInt(req.body.problem_id);
       let problem = await Problem.findById(pid);
       if (!problem) throw new ErrorMessage('无此题目。');
@@ -237,7 +208,6 @@ app.post('/solution/:id/edit', async (req, res) => {
       solution.problem_id = pid;
       solution.user_id = res.locals.user.id;
       solution.public_time = parseInt((new Date()).getTime() / 1000);
-      // 管理员投稿直接 accepted,普通用户 pending
       solution.status = res.locals.user.is_admin ? 'accepted' : 'pending';
       isNew = true;
     } else {
@@ -246,7 +216,6 @@ app.post('/solution/:id/edit', async (req, res) => {
       if (!solution.isAllowedEditBy(res.locals.user)) {
         throw new ErrorMessage('您没有权限编辑此题解。');
       }
-      // 普通用户编辑后回到 pending,管理员编辑保持原状态
       if (!res.locals.user.is_admin && solution.status !== 'pending') {
         solution.status = 'pending';
       }
@@ -271,8 +240,6 @@ app.post('/solution/:id/edit', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 撤回题解 ============
 app.post('/solution/:id/withdraw', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请登录后继续。');
@@ -280,8 +247,6 @@ app.post('/solution/:id/withdraw', async (req, res) => {
     let id = parseInt(req.params.id);
     let solution = await ProblemSolution.findById(id);
     if (!solution) throw new ErrorMessage('无此题解。');
-
-    // 只有投稿人本人可以撤回
     if (solution.user_id !== res.locals.user.id) {
       throw new ErrorMessage('您没有权限撤回此题解。');
     }
@@ -296,8 +261,6 @@ app.post('/solution/:id/withdraw', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 删除题解 ============
 app.post('/solution/:id/delete', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请登录后继续。');
@@ -311,7 +274,14 @@ app.post('/solution/:id/delete', async (req, res) => {
     }
 
     let pid = solution.problem_id;
+    let solutionTitle = solution.title;
     await solution.destroy();
+    if (syzoj.authz.has(res.locals.user, 'manage_solution')) {
+      await syzoj.audit.log(req, 'solution.delete', 'problem_solution', id, {
+        problem_id: pid,
+        title: solutionTitle
+      });
+    }
 
     res.redirect(syzoj.utils.makeUrl(['problem', pid, 'solutions']));
   } catch (e) {
@@ -319,14 +289,9 @@ app.post('/solution/:id/delete', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-// ============ 管理员:题解管理列表 ============
 app.get('/admin/solutions', async (req, res) => {
   try {
-    if (!res.locals.user || !(res.locals.user.is_admin || await res.locals.user.hasPrivilege('manage_problem'))) {
-      throw new ErrorMessage('您没有权限进行此操作。');
-    }
-
-    // 按状态筛选,默认 pending(待审核)
+    syzoj.authz.require(res.locals.user, 'manage_solution');
     let status = req.query.status || 'pending';
     let validStatus = ['pending', 'accepted', 'rejected', 'withdrawn', 'all'];
     if (!validStatus.includes(status)) status = 'pending';
@@ -339,17 +304,13 @@ app.get('/admin/solutions', async (req, res) => {
     let solutions = await ProblemSolution.queryPage(paginate, where, {
       public_time: 'DESC'
     });
-
-    // 加载关联信息
     for (let sol of solutions) {
       sol.user = await User.findById(sol.user_id);
       sol.problem = await Problem.findById(sol.problem_id);
-      // [v1.6.0] 加载审核员信息
       if (sol.reviewer_id) {
         sol.reviewer = await User.findById(sol.reviewer_id);
       }
     }
-    // 各状态计数(用于在标签上显示数字)
     let counts = {
       pending: await ProblemSolution.count({ status: 'pending' }),
       accepted: await ProblemSolution.count({ status: 'accepted' }),
@@ -369,13 +330,9 @@ app.get('/admin/solutions', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 管理员:审核通过 ============
 app.post('/solution/:id/approve', async (req, res) => {
   try {
-    if (!res.locals.user || !(res.locals.user.is_admin || await res.locals.user.hasPrivilege('manage_problem'))) {
-      throw new ErrorMessage('您没有权限进行此操作。');
-    }
+    syzoj.authz.require(res.locals.user, 'manage_solution');
 
     let id = parseInt(req.params.id);
     let solution = await ProblemSolution.findById(id);
@@ -387,7 +344,6 @@ app.post('/solution/:id/approve', async (req, res) => {
     solution.reject_reason = null;
     solution.update_time = parseInt((new Date()).getTime() / 1000);
     await solution.save();
-    // [v1.6.0] 通知作者
     try {
       await syzoj.utils.createNotification({
         recipientId: solution.user_id,
@@ -399,6 +355,11 @@ app.post('/solution/:id/approve', async (req, res) => {
         actorId: res.locals.user.id
       });
     } catch (e) { syzoj.log('[notification] solution_approved failed: ' + e.message); }
+    await syzoj.audit.log(req, 'solution.approve', 'problem_solution', solution.id, {
+      problem_id: solution.problem_id,
+      user_id: solution.user_id,
+      title: solution.title
+    });
 
     res.redirect(syzoj.utils.makeUrl(['solution', solution.id]));
   } catch (e) {
@@ -406,13 +367,9 @@ app.post('/solution/:id/approve', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 管理员:审核拒绝 ============
 app.post('/solution/:id/reject', async (req, res) => {
   try {
-    if (!res.locals.user || !(res.locals.user.is_admin || await res.locals.user.hasPrivilege('manage_problem'))) {
-      throw new ErrorMessage('您没有权限进行此操作。');
-    }
+    syzoj.authz.require(res.locals.user, 'manage_solution');
 
     let id = parseInt(req.params.id);
     let solution = await ProblemSolution.findById(id);
@@ -428,7 +385,6 @@ app.post('/solution/:id/reject', async (req, res) => {
     solution.reject_reason = reason;
     solution.update_time = parseInt((new Date()).getTime() / 1000);
     await solution.save();
-    // [v1.6.0] 通知作者
     try {
       await syzoj.utils.createNotification({
         recipientId: solution.user_id,
@@ -440,6 +396,12 @@ app.post('/solution/:id/reject', async (req, res) => {
         actorId: res.locals.user.id
       });
     } catch (e) { syzoj.log('[notification] solution_rejected failed: ' + e.message); }
+    await syzoj.audit.log(req, 'solution.reject', 'problem_solution', solution.id, {
+      problem_id: solution.problem_id,
+      user_id: solution.user_id,
+      title: solution.title,
+      reason: reason
+    });
 
     res.redirect(syzoj.utils.makeUrl(['solution', solution.id]));
   } catch (e) {
@@ -447,8 +409,6 @@ app.post('/solution/:id/reject', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 提交评论 ============
 app.post('/solution/:id/comment', async (req, res) => {
   try {
     if (!res.locals.user) {
@@ -476,13 +436,9 @@ app.post('/solution/:id/comment', async (req, res) => {
     await comment.save();
 
     await solution.resetCommentsNum();
-
-    // ============ 通知逻辑 ============
     let viewerId = res.locals.user.id;
     let notifiedIds = new Set();
     notifiedIds.add(viewerId);
-
-    // 1. 通知题解作者
     if (solution.user_id && !notifiedIds.has(solution.user_id)) {
       try {
         await syzoj.utils.createNotification({
@@ -497,8 +453,6 @@ app.post('/solution/:id/comment', async (req, res) => {
         notifiedIds.add(solution.user_id);
       } catch (e) { syzoj.log('[solution] notify author failed: ' + e.message); }
     }
-
-    // 2. @ 提及通知
     try {
       if (syzoj.utils.parseMentions) {
         let mentions = await syzoj.utils.parseMentions(content);
@@ -524,8 +478,6 @@ app.post('/solution/:id/comment', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 删除评论 ============
 app.post('/solution/:sid/comment/:cid/delete', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请登录后继续。');
@@ -550,12 +502,10 @@ app.post('/solution/:sid/comment/:cid/delete', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-// ============ 审核者:切换题目题解提交开关 ============
 app.post('/problem/:pid/solution-toggle-submission', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请登录后继续。');
-    let canManage = res.locals.user.is_admin || await res.locals.user.hasPrivilege('manage_problem');
-    if (!canManage) throw new ErrorMessage('您没有权限进行此操作。');
+    syzoj.authz.require(res.locals.user, 'manage_solution_setting');
 
     let pid = parseInt(req.params.pid);
     let problem = await Problem.findById(pid);
@@ -572,6 +522,9 @@ app.post('/problem/:pid/solution-toggle-submission', async (req, res) => {
     setting.update_time = parseInt((new Date()).getTime() / 1000);
     setting.updated_by = res.locals.user.id;
     await setting.save();
+    await syzoj.audit.log(req, 'solution_setting.toggle_submission', 'problem', pid, {
+      disable_submission: setting.disable_submission
+    });
 
     res.redirect(syzoj.utils.makeUrl(['problem', pid, 'solutions']));
   } catch (e) {

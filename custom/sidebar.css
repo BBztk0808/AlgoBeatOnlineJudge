@@ -1,4 +1,4 @@
-/* ============ AlgoBeat Sidebar Layout v1.6.0 ============ */
+
 
 html, body {
   margin: 0;
@@ -17,7 +17,6 @@ body.algobeat-sidebar-layout {
   overflow-y: auto !important;
 }
 
-/* ---- TopBar ---- */
 .ab-topbar {
   position: fixed;
   top: 0; left: 0; right: 0;
@@ -124,13 +123,23 @@ body.algobeat-sidebar-layout {
   border-radius: 4px;
   cursor: pointer;
   margin-left: 4px;
+  overflow: visible !important;
+}
+.ab-topbar-user-label {
+  display: inline-block;
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ab-topbar-user-dropdown:hover { background: #f0f0f0; }
 .ab-topbar-user-dropdown .menu {
   top: 100% !important;
   margin-top: 0 !important;
-  min-width: 200px;
-  /* 留 hover 时的视觉间距:用 padding 填满 hit area */
+  min-width: 220px;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 24px));
   padding-top: 6px !important;
   padding-bottom: 6px !important;
   border-top: none !important;
@@ -142,15 +151,23 @@ body.algobeat-sidebar-layout {
   left: 0;
   right: 0;
   height: 8px;
-  /* 透明桥梁,鼠标穿过头的口间 hover 不丢 */
   background: transparent;
 }
 .ab-topbar-user-dropdown .item {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
   padding: 10px 16px !important;
   white-space: nowrap;
+  overflow: visible !important;
+}
+.ab-topbar-user-dropdown .item > i.icon {
+  width: 20px !important;
+  margin: 0 !important;
+  flex: 0 0 20px;
+  text-align: center;
 }
 
-/* ---- Sidebar ---- */
 .ab-sidebar {
   position: fixed;
   top: 50px;
@@ -228,7 +245,6 @@ body.algobeat-sidebar-layout {
 }
 .ab-sidebar-label { flex: 1; }
 
-/* ---- 折叠状态 (桌面) ---- */
 body.algobeat-sidebar-collapsed { padding-left: 56px; }
 body.algobeat-sidebar-collapsed .ab-sidebar { width: 56px; }
 body.algobeat-sidebar-collapsed .ab-sidebar-brand-text,
@@ -249,7 +265,6 @@ body.algobeat-sidebar-collapsed .ab-sidebar-item {
   padding: 12px 8px;
 }
 
-/* ---- Backdrop (手机端遮罩) ---- */
 .ab-backdrop {
   display: none;
   position: fixed;
@@ -258,7 +273,6 @@ body.algobeat-sidebar-collapsed .ab-sidebar-item {
   z-index: 140;
 }
 
-/* ---- 移动端 ---- */
 @media (max-width: 768px) {
   body.algobeat-sidebar-layout { padding-left: 0 !important; }
   .ab-sidebar {
@@ -272,10 +286,8 @@ body.algobeat-sidebar-collapsed .ab-sidebar-item {
   .ab-topbar { padding: 0 10px; }
 }
 
-/* ---- 兼容 SYZOJ 原有结构 ---- */
 body.algobeat-sidebar-layout .ui.main.container { padding-top: 4px; }
 
-/* ============ FOUC 防护(页面初次加载前展开/折叠状态)============ */
 html[data-ab-sidebar-collapsed="true"] body.algobeat-sidebar-layout { padding-left: 56px; }
 html[data-ab-sidebar-collapsed="true"] .ab-sidebar { width: 56px; }
 html[data-ab-sidebar-collapsed="true"] .ab-sidebar-brand-text,
@@ -295,13 +307,12 @@ html[data-ab-sidebar-collapsed="true"] .ab-sidebar-item {
   justify-content: center;
   padding: 12px 8px;
 }
-/* 初次加载禁用 transition,避免闪烁 */
+
 html[data-ab-sidebar-collapsed="true"] body.algobeat-sidebar-layout,
 html[data-ab-sidebar-collapsed="true"] .ab-sidebar {
   transition: none !important;
 }
 
-/* ============ 首页 Banner 轮播 ============ */
 .ab-banner-wrap {
   position: relative;
   width: 100%;
@@ -380,7 +391,6 @@ html[data-ab-sidebar-collapsed="true"] .ab-sidebar {
 .ab-banner-arrow.left { left: 10px; }
 .ab-banner-arrow.right { right: 10px; }
 
-/* ============ 比赛卡片 ============ */
 .ab-contest-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -433,7 +443,6 @@ html[data-ab-sidebar-collapsed="true"] .ab-sidebar {
 }
 .ab-contest-card-time { font-family: monospace; font-size: 0.85em; color: #888; }
 
-/* ============ 紧凑比赛卡片(首页右侧) ============ */
 .ab-contest-mini {
   display: block;
   padding: 12px 6px;
@@ -468,7 +477,6 @@ html[data-ab-sidebar-collapsed="true"] .ab-sidebar {
   margin-left: auto;
 }
 
-/* ============ 首页顶部 grid 等高对齐 ============ */
 .ab-home-top-grid {
   display: flex !important;
   align-items: stretch !important;

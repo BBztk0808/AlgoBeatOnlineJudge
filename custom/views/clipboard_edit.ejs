@@ -11,7 +11,6 @@ function expiresToDays(ts) {
 }
 %>
 
-<!-- markdown-it + highlight.js + KaTeX (BootCDN 国内备案) -->
 <link rel="stylesheet" href="/self/lib/highlight-atom-one-light.min.css">
 <link rel="stylesheet" href="/self/lib/katex.min.css">
 <script src="/self/lib/markdown-it.min.js"></script>
@@ -24,7 +23,7 @@ function expiresToDays(ts) {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  height: 540px;
+  min-height: min(62vh, 620px);
 }
 .clipboard-edit-pane {
   display: flex;
@@ -181,7 +180,6 @@ int main() { return 0; }
 
 <script>
 $(function () {
-  // ---- 可见性 radio 切换 ----
   function refreshVisibility() {
     var v = $('input[name="visibility"]:checked').val();
     if (v === 'link') $('#link-options').show();
@@ -190,8 +188,6 @@ $(function () {
   $('.ui.radio.checkbox').checkbox();
   $('input[name="visibility"]').change(refreshVisibility);
   refreshVisibility();
-
-  // ---- Markdown 实时预览 ----
   var md = window.markdownit({
     html: false,
     breaks: true,
@@ -217,7 +213,6 @@ $(function () {
     var text = $textarea.val();
     try {
       $preview.html(md.render(text));
-      // KaTeX auto-render 扫描 $...$ 和 $$...$$
       if (window.renderMathInElement) {
         window.renderMathInElement($preview[0], {
           delimiters: [
@@ -236,24 +231,18 @@ $(function () {
     var chars = text.length;
     $stat.text(chars + ' 字 · ' + lines + ' 行');
   }
-
-  // 滚动同步
   function syncScroll() {
     var ta = $textarea[0];
     var pv = $preview[0];
     var ratio = ta.scrollTop / (ta.scrollHeight - ta.clientHeight || 1);
     pv.scrollTop = ratio * (pv.scrollHeight - pv.clientHeight);
   }
-
-  // 节流渲染
   var renderTimer = null;
   $textarea.on('input', function () {
     if (renderTimer) clearTimeout(renderTimer);
     renderTimer = setTimeout(render, 150);
   });
   $textarea.on('scroll', syncScroll);
-
-  // 初始渲染
   render();
 });
 </script>

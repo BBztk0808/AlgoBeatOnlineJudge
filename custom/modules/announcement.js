@@ -1,11 +1,7 @@
 let Announcement = syzoj.model('announcement');
-
-// ============ 后台:公告管理列表 ============
 app.get('/admin/announcements', async (req, res) => {
   try {
-    if (!res.locals.user || !res.locals.user.is_admin) {
-      throw new ErrorMessage('您没有权限进行此操作。');
-    }
+    syzoj.authz.require(res.locals.user, 'manage_announcement');
 
     let pageSize = 20;
     let total = await Announcement.count({});
@@ -29,13 +25,9 @@ app.get('/admin/announcements', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 后台:编辑/新建公告 GET ============
 app.get('/admin/announcement/:id/edit', async (req, res) => {
   try {
-    if (!res.locals.user || !res.locals.user.is_admin) {
-      throw new ErrorMessage('您没有权限进行此操作。');
-    }
+    syzoj.authz.require(res.locals.user, 'manage_announcement');
 
     let id = parseInt(req.params.id);
     let announcement;
@@ -46,7 +38,6 @@ app.get('/admin/announcement/:id/edit', async (req, res) => {
       announcement.content = '';
       announcement.level = 'info';
       announcement.is_active = true;
-      // 默认生效时间:从现在开始,到 7 天后
       let now = parseInt((new Date()).getTime() / 1000);
       announcement.start_time = now;
       announcement.end_time = now + 7 * 24 * 3600;
@@ -63,16 +54,13 @@ app.get('/admin/announcement/:id/edit', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 后台:编辑/新建公告 POST ============
 app.post('/admin/announcement/:id/edit', async (req, res) => {
   try {
-    if (!res.locals.user || !res.locals.user.is_admin) {
-      throw new ErrorMessage('您没有权限进行此操作。');
-    }
+    syzoj.authz.require(res.locals.user, 'manage_announcement');
 
     let id = parseInt(req.params.id);
     let announcement;
+    let isNew = id === 0;
     if (id === 0) {
       announcement = await Announcement.create();
       announcement.public_time = parseInt((new Date()).getTime() / 1000);
@@ -89,8 +77,6 @@ app.post('/admin/announcement/:id/edit', async (req, res) => {
     if (!title) throw new ErrorMessage('标题不能为空。');
     if (title.length > 120) throw new ErrorMessage('标题过长(最多 120 字)。');
     if (!content) throw new ErrorMessage('内容不能为空。');
-
-    // 时间字段从前端传"yyyy-MM-dd HH:mm"格式,转成 unix 时间戳
     function parseDateTimeStr(s) {
       if (!s) return null;
       let d = new Date(s);
@@ -113,6 +99,11 @@ app.post('/admin/announcement/:id/edit', async (req, res) => {
     announcement.update_time = parseInt((new Date()).getTime() / 1000);
 
     await announcement.save();
+    await syzoj.audit.log(req, isNew ? 'announcement.create' : 'announcement.update', 'announcement', announcement.id, {
+      title: announcement.title,
+      level: announcement.level,
+      is_active: announcement.is_active
+    });
 
     res.redirect(syzoj.utils.makeUrl(['admin', 'announcements']));
   } catch (e) {
@@ -120,13 +111,9 @@ app.post('/admin/announcement/:id/edit', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 后台:启用/停用切换 ============
 app.post('/admin/announcement/:id/toggle', async (req, res) => {
   try {
-    if (!res.locals.user || !res.locals.user.is_admin) {
-      throw new ErrorMessage('您没有权限进行此操作。');
-    }
+    syzoj.authz.require(res.locals.user, 'manage_announcement');
     let id = parseInt(req.params.id);
     let announcement = await Announcement.findById(id);
     if (!announcement) throw new ErrorMessage('无此公告。');
@@ -134,6 +121,9 @@ app.post('/admin/announcement/:id/toggle', async (req, res) => {
     announcement.is_active = !announcement.is_active;
     announcement.update_time = parseInt((new Date()).getTime() / 1000);
     await announcement.save();
+    await syzoj.audit.log(req, 'announcement.toggle', 'announcement', announcement.id, {
+      is_active: announcement.is_active
+    });
 
     res.redirect(syzoj.utils.makeUrl(['admin', 'announcements']));
   } catch (e) {
@@ -141,18 +131,16 @@ app.post('/admin/announcement/:id/toggle', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ 后台:删除公告 ============
 app.post('/admin/announcement/:id/delete', async (req, res) => {
   try {
-    if (!res.locals.user || !res.locals.user.is_admin) {
-      throw new ErrorMessage('您没有权限进行此操作。');
-    }
+    syzoj.authz.require(res.locals.user, 'manage_announcement');
     let id = parseInt(req.params.id);
     let announcement = await Announcement.findById(id);
     if (!announcement) throw new ErrorMessage('无此公告。');
 
+    let title = announcement.title;
     await announcement.destroy();
+    await syzoj.audit.log(req, 'announcement.delete', 'announcement', id, { title: title });
 
     res.redirect(syzoj.utils.makeUrl(['admin', 'announcements']));
   } catch (e) {
@@ -160,13 +148,9 @@ app.post('/admin/announcement/:id/delete', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-
-// ============ API:获取当前活动公告(给首页前端 JS 用) ============
 app.get('/api/active-announcements', async (req, res) => {
   try {
     let now = parseInt((new Date()).getTime() / 1000);
-
-    // 查所有 is_active=true 且当前时间在 [start_time, end_time] 内的
     let qb = Announcement.createQueryBuilder()
       .where('is_active = 1')
       .andWhere('(start_time IS NULL OR start_time <= :now)', { now: now })
@@ -174,8 +158,6 @@ app.get('/api/active-announcements', async (req, res) => {
       .orderBy('public_time', 'DESC');
 
     let list = await qb.getMany();
-
-    // 渲染 markdown 内容,只把必要字段返回前端
     let result = [];
     for (let a of list) {
       result.push({

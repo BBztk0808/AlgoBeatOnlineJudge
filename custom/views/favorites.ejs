@@ -1,0 +1,83 @@
+<% this.title = '我的收藏' %>
+<% include header %>
+
+<div class="padding">
+  <div class="ab-toolbar" style="margin-bottom: 18px;">
+    <div>
+      <h2 style="margin: 0;"><i class="star outline icon"></i> 我的收藏</h2>
+      <div style="color: #888; margin-top: 6px;">收藏想补、想复习或暂时不会做的题目。</div>
+    </div>
+    <a class="ui button" href="<%= syzoj.utils.makeUrl(['problems']) %>">
+      <i class="search icon"></i> 去题库
+    </a>
+  </div>
+
+  <% if (!favorites.length) { %>
+    <div class="ui placeholder segment">
+      <div class="ui icon header">
+        <i class="star outline icon"></i>
+        还没有收藏题目
+      </div>
+      <a class="ui primary button" href="<%= syzoj.utils.makeUrl(['problems']) %>">浏览题库</a>
+    </div>
+  <% } else { %>
+    <div style="color: #888; margin-bottom: 12px;">共 <b><%= total %></b> 道收藏题目</div>
+    <div class="ab-scroll-table">
+      <table class="ui celled table">
+        <thead>
+          <tr>
+            <th style="width: 72px;">状态</th>
+            <th style="width: 100px;">题号</th>
+            <th>题目</th>
+            <th style="width: 180px;">收藏时间</th>
+            <th style="width: 90px;">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (let fav of favorites) { %>
+            <tr>
+              <td>
+                <% if (fav.accepted) { %>
+                  <span class="ui green tiny label"><i class="check icon"></i>AC</span>
+                <% } else { %>
+                  <span class="ui grey tiny label">未过</span>
+                <% } %>
+              </td>
+              <td><a href="<%= syzoj.utils.makeUrl(['problem', fav.problem_id]) %>">#<%= fav.problem_id %></a></td>
+              <td><a href="<%= syzoj.utils.makeUrl(['problem', fav.problem_id]) %>"><%= fav.problem.title %></a></td>
+              <td><%= syzoj.utils.formatDate(fav.created_at) %></td>
+              <td>
+                <button class="ui mini button ab-favorite-remove" data-problem-id="<%= fav.problem_id %>">
+                  取消收藏
+                </button>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    <% include page %>
+  <% } %>
+</div>
+
+<script>
+$(function () {
+  $('.ab-favorite-remove').on('click', function () {
+    var btn = $(this);
+    var id = btn.data('problem-id');
+    btn.addClass('loading disabled');
+    fetch('/api/problem/' + id + '/unfavorite', {
+      method: 'POST',
+      credentials: 'same-origin'
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d.ok) throw new Error(d.message || '操作失败');
+      location.reload();
+    }).catch(function (e) {
+      alert(e.message || e);
+      btn.removeClass('loading disabled');
+    });
+  });
+});
+</script>
+
+<% include footer %>

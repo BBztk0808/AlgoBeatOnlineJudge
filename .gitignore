@@ -12,6 +12,7 @@ Thumbs.db
 *.swp
 *.swo
 *.sql
+!sql/*.sql
 *.tar.gz
 *.zip
 custom/node_modules/

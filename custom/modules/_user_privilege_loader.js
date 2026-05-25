@@ -1,8 +1,3 @@
-// 给每个请求注入用户辅助信息到模板:
-// 1. user.privileges - 权限数组
-// 2. res.locals.pendingSolutionsCount - 待审核题解数(仅审核者)
-// 3. res.locals.unreadMessagesCount - 未读站内信数
-// 4. user.is_email_verified - 邮箱是否已验证
 let UserPrivilege = syzoj.model('user_privilege');
 let ProblemSolution = syzoj.model('problem-solution');
 let PrivateMessage = syzoj.model('private-message');
@@ -22,7 +17,7 @@ app.use(async (req, res, next) => {
     res.locals.pendingSolutionsCount = 0;
     let user = res.locals.user;
     if (user) {
-      let canReview = user.is_admin || (user.privileges && user.privileges.includes('manage_problem'));
+      let canReview = syzoj.authz && syzoj.authz.has(user, 'manage_solution');
       if (canReview) {
         res.locals.pendingSolutionsCount = await ProblemSolution.count({ status: 'pending' });
       }
@@ -43,7 +38,6 @@ app.use(async (req, res, next) => {
   } catch (e) {
     res.locals.unreadMessagesCount = 0;
   }
-  // [v1.6.0] 通知中心未读数
   try {
     res.locals.unreadNotificationsCount = 0;
     if (res.locals.user && syzoj.utils.countUnreadNotifications) {

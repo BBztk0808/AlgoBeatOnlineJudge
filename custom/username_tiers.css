@@ -1,4 +1,4 @@
-/* 用户名颜色分档样式 */
+
 .username-tier-default { color: #555; font-weight: normal; text-decoration: none; }
 .username-tier-default:hover { text-decoration: underline; }
 
@@ -13,13 +13,12 @@
 .username-tier-admin { color: #a333c8; font-weight: bold; }
 .username-tier-admin:hover { color: #8e2cb0; }
 
-/* 让所有 tier 链接 hover 时有下划线 */
 a.username-tier-blue:hover,
 a.username-tier-green:hover,
 a.username-tier-orange:hover,
 a.username-tier-red:hover,
 a.username-tier-gray:hover { text-decoration: underline; }
-/* ============ 用户名 tag(v1.5.0) ============ */
+
 .user-name-tag {
   display: inline-block;
   padding: 1px 7px;
@@ -40,9 +39,9 @@ a.username-tier-gray:hover { text-decoration: underline; }
 .user-name-tag.tag-tier-orange  { background: #f2711c; }
 .user-name-tag.tag-tier-red     { background: #db2828; }
 .user-name-tag.tag-tier-admin   { background: #a333c8; }
-/* ============ 作弊者(v1.5.0) ============ */
+
 .username-tier-cheater {
-  color: #8B4513; /* 棕色 */
+  color: #8B4513;
   font-weight: bold;
   text-decoration: line-through;
 }
@@ -51,7 +50,6 @@ a.username-tier-cheater:hover {
   text-decoration: line-through underline;
 }
 
-/* ============ 用户名 tag(v1.5.0) ============ */
 .user-name-tag {
   display: inline-block;
   padding: 1px 7px;

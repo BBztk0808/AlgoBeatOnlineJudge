@@ -2,12 +2,10 @@
 <% include util %>
 <% include header %>
 <%
-// ============ 数据准备(实际数据由 _judge_admin_action_loader.js middleware 注入到 res.locals) ============
 let isAdminCheating = (typeof judgeAdminAction !== 'undefined' && judgeAdminAction && judgeAdminAction.action_type === 'cheated');
 let isAdminCancelled = (typeof judgeAdminAction !== 'undefined' && judgeAdminAction && judgeAdminAction.action_type === 'cancelled');
 let isMarked = isAdminCheating || isAdminCancelled;
-let canManageAction = res.locals.user && (res.locals.user.is_admin ||
-  (res.locals.user.privileges && res.locals.user.privileges.includes('manage_problem')));
+let canManageAction = res.locals.can && res.locals.can('manage_judge_action');
 let markedDetail = (typeof judgeAdminAction !== 'undefined' && judgeAdminAction) ? judgeAdminAction : null;
 let isCheated = (typeof judgeAdminAction !== 'undefined' && judgeAdminAction && judgeAdminAction.action_type === 'cheated');
 %>
@@ -54,7 +52,7 @@ let isCheated = (typeof judgeAdminAction !== 'undefined' && judgeAdminAction && 
           <br><span style="color: #555;">原因：<%= markedDetail.reason %></span>
         <% } %>
       </span>
-      <% if (markedDetail.action_type === 'cancelled' && res.locals.user 
+      <% if (markedDetail.action_type === 'cancelled' && res.locals.user
              && (res.locals.user.id === markedDetail.affected_user_id || canManageAction)) { %>
         <div style="margin-top: 12px;">
           <form method="post" action="<%= syzoj.utils.makeUrl(['submission', info.submissionId, 'restore-and-rejudge']) %>"
@@ -110,6 +108,7 @@ let isCheated = (typeof judgeAdminAction !== 'undefined' && judgeAdminAction && 
       <% } %>
     </div>
   <% } %>
+  <div class="ab-scroll-table">
   <table class="ui very basic center aligned table" id="status_table">
     <thead>
       <tr>
@@ -129,6 +128,7 @@ let isCheated = (typeof judgeAdminAction !== 'undefined' && judgeAdminAction && 
       <tr is="submission-item" v-bind:data="roughData" :config="displayConfig" :show-rejudge="showRejudge" :progress="getProgress()" :compiling="detailResult && !detailResult.compile"></tr>
     </tbody>
   </table>
+  </div>
 
   <code-box no-escape v-bind:content="code">
     <% if (formattedCode !== null) { %>
@@ -393,11 +393,9 @@ if (token != null) {
     socket.on('connect', function () {
       socket.on('start', function () {
         vueApp.roughData.running = true;
-        console.log("Judge start!");
         vueApp.detailResult = {};
       });
       socket.on('update', function (p) {
-        console.log("Delta: ", p);
         if (p.from === currentVersion) {
           currentVersion = p.to;
           jsondiffpatch.patch(vueApp.detailResult, p.delta);
@@ -409,14 +407,12 @@ if (token != null) {
         }
       });
       socket.on('finish', function (p) {
-        console.log("Judge finished");
         vueApp.roughData.running = false;
         vueApp.roughData.result = p.roughResult;
         vueApp.detailResult = p.result;
         socket.close();
       });
       socket.emit('join', token, function (data) {
-        console.log("join! ", data);
         if (data && data.ok) {
           if (data.finished) {
             vueApp.roughData.result = data.roughResult;
@@ -425,9 +421,7 @@ if (token != null) {
             socket.close();
           } else {
             if (data.running) {
-              // vueApp.roughData.running = true;
               vueApp.detailResult = data.current.content;
-              // vueApp.roughData.result = data.roughResult;
               currentVersion = data.current.version;
             }
           }

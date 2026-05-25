@@ -1,7 +1,6 @@
 <% this.title = '排名 - ' + contest.title %>
 <% include header %>
 <%
-// [v1.5.1] 比赛排行榜:作弊用户分数清零, 总分=-1, 排到末尾
 const _cheaterSet = (syzoj.contestCheaterMap && syzoj.contestCheaterMap.get(contest.id)) || null;
 if (_cheaterSet && _cheaterSet.size > 0 && Array.isArray(ranklist)) {
   for (let item of ranklist) {
@@ -176,8 +175,7 @@ if (_cheaterSet && _cheaterSet.size > 0 && Array.isArray(ranklist)) {
             </tbody>
         </table>
 <% if (!ranklist.length) { %>
-<div style="background-color: #fff; height: 18px; margin-top: -18px; "></div>
-<div class="ui placeholder segment" style="margin-top: 0px; ">
+<div class="ui placeholder segment ab-contest-empty-ranklist">
   <div class="ui icon header">
     <i class="ui file icon" style="margin-bottom: 20px; "></i>
     暂无选手提交

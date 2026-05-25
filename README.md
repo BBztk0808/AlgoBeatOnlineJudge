@@ -1,11 +1,13 @@
 # AlgoBeat Online Judge
 
-基于 [SYZOJ](https://github.com/syzoj/syzoj) 二次开发的中文 OJ 评测 + 社区平台。在原版基础上重构 UI 框架,新增了完整的**社区互动**、**通知中心**、**关注/犇犇社交**、**工单**、**Hit 值评分**、**用户名牌子**、**邮箱验证**、**剪贴板 Markdown 编辑器**等数十个模块。
+基于 [SYZOJ](https://github.com/syzoj/syzoj) 二次开发的中文 OJ 评测 + 社区平台。在原版基础上重构 UI 框架,新增了完整的**题单训练**、**题目收藏**、**社区互动**、**通知中心**、**关注/犇犇社交**、**工单**、**Hit 值评分**、**用户名牌子**、**邮箱验证**、**剪贴板 Markdown 编辑器**等数十个模块。
 
-> **当前版本**:v1.7.1 · 📋 剪贴板 Markdown 实时预览编辑器 · 全本地化静态资源
+> **当前版本**:v1.8.1 · 暗色模式 + 紫黑主题 · 顶栏菜单修复
 
 近期主要里程碑(完整历史见 [#版本历史](#-版本历史)):
 
+- **v1.8.1** · 暗色模式 + 紫黑主题 + 顶栏用户菜单修复 + 评测/Ranking/犇犇暗色覆盖
+- **v1.8.0** · 题单/训练计划 + 题目收藏 + 首页 Apple 风格响应式布局
 - **v1.7.1** · 剪贴板编辑器升级 - 左右分屏 + 实时预览 + 代码高亮 + KaTeX
 - **v1.7.0** · 关注/粉丝系统 + 犇犇板块 + @ 提及通知
 - **v1.6.0** · 通知中心 + 左侧 Sidebar UI 重构 + Banner 轮播系统
@@ -18,13 +20,15 @@
 参考洛谷的两栏布局,告别 SYZOJ 原版的顶部横向菜单:
 
 - **顶部 topbar**(50px 高):logo + 站名 + 通知铃铛 + 站内信 + 用户头像
-- **左侧 sidebar**(220px 宽):垂直导航(首页/题库/比赛/评测/排名/讨论/标签/工单/帮助)
+- **左侧 sidebar**(220px 宽):垂直导航(首页/题库/题单/收藏/比赛/评测/排名/讨论/标签/工单/帮助)
 - **折叠按钮**:点 ☰ 收起到 56px,localStorage 持久化偏好
 - **FOUC 防护**:HTML 顶部内联 script 抢先应用折叠状态,无闪烁
 - **Contest 页**:topbar 左侧固定「返回比赛」按钮
 - **admin 菜单**:仍在用户头像 dropdown(后台/题解审核/公告管理/牌子管理/Banner 管理/重算 Hit/重启服务)
+- **暗色模式**:顶栏按钮一键切换,使用 `localStorage` 持久化主题偏好
+- **紫黑主题**:暗色主色为 `#201C22` / `#443B4C`,并覆盖犇犇、评测、Ranking、表单、表格等常用组件
 
-> ⚠️ 设计取舍:v1.6.0 取消了移动端响应式,站点固定按 1200px 桌面宽度渲染。手机用户横向滚动查看 - 我们认为这比强行压缩页面更好。
+v1.8.0 起全站样式升级为 Apple 风格响应式布局,桌面端保持两栏工作区,平板和手机端自动切为单列/抽屉侧栏,避免固定导航遮挡正文。v1.8.1 补齐暗色模式与用户菜单显示修复。
 
 ### 🔔 通知中心(v1.6.0)
 
@@ -88,11 +92,46 @@
 - 单条内容 100 KB 上限
 - **全本地化**:markdown-it + highlight.js + KaTeX 库**全部下载到自家服务器**(`/self/lib/`),不依赖任何 CDN
 
+### 📚 题单 / 训练计划(v1.8.0)
+
+用于把零散题目整理成专题训练、入门路线、赛后补题清单:
+
+- 顶部 sidebar 新增「题单」入口,列表页 `/problemsets`
+- 支持公开题单和个人私有题单:
+  - 公开题单:所有用户可查看
+  - 私有题单:仅作者本人和题单管理权限用户可查看
+- 登录用户可在 `/problemset/new` 创建题单
+- 普通用户只能创建/维护私有题单
+- 公开题单只能由拥有 `manage_problemset` 题单管理权限的管理员创建、编辑和增删题目
+- 超级管理员可在用户编辑页授予「管理题单」权限
+- 编辑题单时用文本方式维护题目顺序:
+  ```text
+  1001 二分答案
+  1002 树形 DP
+  1003
+  ```
+- 每道题可附加一条简短备注
+- 题单详情页显示题号、题目标题、备注、当前登录用户 AC 状态
+- 登录用户可看到完成进度(`已 AC / 总题数`)
+- 作者本人可编辑/删除自己的私有题单;公开题单仅题单管理员可编辑/删除
+- AC 进度自动排除被管理员标记为作弊或取消的提交
+
+### ⭐ 题目收藏(v1.8.0)
+
+面向“稍后做 / 想复习 / 不会做”的轻量个人题库:
+
+- 题目详情页新增「收藏 / 已收藏」按钮
+- 收藏按钮通过 AJAX 更新,无需离开题目页
+- 侧栏新增「收藏」入口,登录后可访问 `/favorites`
+- 收藏列表显示题号、题目标题、收藏时间和当前 AC 状态
+- 支持在收藏列表中快速取消收藏
+- 同一用户对同一题只能收藏一次
+
 ### 🏷️ 用户名牌子系统(v1.5.0)
 
 参考洛谷设计的荣誉徽章:
 
-- **管理员自动获得**:拥有 is_admin 或 manage_problem/manage_problem_tag/manage_user 任一权限的用户**自动**获得 tag 权限,默认显示「管理员」
+- **管理员自动获得**:拥有 is_admin 或 manage_problem/manage_problem_tag/manage_problemset/manage_user 任一权限的用户**自动**获得 tag 权限,默认显示「管理员」
 - **手动授权**:超级管理员可在 `/admin/user-tags` 管理界面授予普通用户 tag 权限
 - **个性化设置**:用户可在 `/edit` 自定义 tag 文字(最多 12 字符)和展示开关
 - **颜色一致**:tag 颜色与用户名颜色档完全一致(管理员紫、Hit 值红/橙/绿/蓝/灰)
@@ -293,236 +332,16 @@ docker compose up -d
 docker exec -i algobeat-mariadb-1 mariadb -u root syzoj \
   -e "UPDATE \`user\` SET is_admin = 1 WHERE username = '你的用户名';"
 
-# 8. 初始化业务数据表(见下方 SQL 脚本)
+# 8. 初始化业务数据表
+docker compose exec -T mariadb mariadb -u root syzoj < sql/001_custom_tables.sql
 ```
 
 ### SQL 初始化脚本
 
+自定义业务表已抽出到 `sql/001_custom_tables.sql`,可重复执行。
+
 ```bash
-docker exec -i algobeat-mariadb-1 mariadb -u root syzoj <<'EOF'
--- ============ v1.2.x: 题解 / 评论 / 投稿开关 ============
-CREATE TABLE IF NOT EXISTS `problem_solution` (
-  `id` INT NOT NULL AUTO_INCREMENT, `title` VARCHAR(80) DEFAULT NULL,
-  `content` MEDIUMTEXT DEFAULT NULL, `problem_id` INT DEFAULT NULL,
-  `user_id` INT DEFAULT NULL, `status` VARCHAR(20) DEFAULT 'pending',
-  `public_time` INT DEFAULT NULL, `update_time` INT DEFAULT NULL,
-  `reject_reason` VARCHAR(255) DEFAULT NULL, `allow_comment` BOOLEAN DEFAULT TRUE,
-  `comments_num` INT DEFAULT 0,
-  `reviewer_id` INT DEFAULT NULL, `reviewed_at` INT DEFAULT NULL,  -- v1.6.0 新增
-  PRIMARY KEY (`id`),
-  KEY `idx_problem_id` (`problem_id`), KEY `idx_user_id` (`user_id`),
-  KEY `idx_status` (`status`), KEY `idx_problem_status` (`problem_id`, `status`),
-  KEY `idx_reviewer` (`reviewer_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `problem_solution_comment` (
-  `id` INT NOT NULL AUTO_INCREMENT, `content` TEXT DEFAULT NULL,
-  `solution_id` INT DEFAULT NULL, `user_id` INT DEFAULT NULL,
-  `public_time` INT DEFAULT NULL, PRIMARY KEY (`id`),
-  KEY `idx_solution_id` (`solution_id`), KEY `idx_user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `problem_solution_setting` (
-  `problem_id` INT NOT NULL, `disable_submission` BOOLEAN DEFAULT FALSE,
-  `update_time` INT DEFAULT NULL, `updated_by` INT DEFAULT NULL,
-  PRIMARY KEY (`problem_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ============ v1.3.x: 公告 / 站内信 / 剪贴板 / 邮箱验证 / Hit 值 ============
-CREATE TABLE IF NOT EXISTS `announcement` (
-  `id` INT NOT NULL AUTO_INCREMENT, `title` VARCHAR(120) DEFAULT NULL,
-  `content` MEDIUMTEXT DEFAULT NULL, `level` VARCHAR(20) DEFAULT 'info',
-  `start_time` INT DEFAULT NULL, `end_time` INT DEFAULT NULL,
-  `is_active` BOOLEAN DEFAULT TRUE, `public_time` INT DEFAULT NULL,
-  `update_time` INT DEFAULT NULL, PRIMARY KEY (`id`),
-  KEY `idx_active_time` (`is_active`, `start_time`, `end_time`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `private_message` (
-  `id` INT NOT NULL AUTO_INCREMENT, `sender_id` INT DEFAULT NULL,
-  `receiver_id` INT DEFAULT NULL, `content` TEXT DEFAULT NULL,
-  `public_time` INT DEFAULT NULL, `is_read` BOOLEAN DEFAULT FALSE,
-  `sender_deleted` BOOLEAN DEFAULT FALSE, `receiver_deleted` BOOLEAN DEFAULT FALSE,
-  PRIMARY KEY (`id`), KEY `idx_sender` (`sender_id`),
-  KEY `idx_receiver` (`receiver_id`), KEY `idx_pair` (`sender_id`, `receiver_id`),
-  KEY `idx_unread` (`receiver_id`, `is_read`, `receiver_deleted`),
-  KEY `idx_time` (`public_time`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `user_message_setting` (
-  `user_id` INT NOT NULL, `disable_messages` BOOLEAN DEFAULT FALSE,
-  `update_time` INT DEFAULT NULL, PRIMARY KEY (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `clipboard_item` (
-  `id` INT NOT NULL AUTO_INCREMENT, `user_id` INT DEFAULT NULL,
-  `title` VARCHAR(120) DEFAULT NULL, `content` MEDIUMTEXT DEFAULT NULL,
-  `visibility` VARCHAR(20) DEFAULT 'private', `share_token` VARCHAR(40) DEFAULT NULL,
-  `share_expires` INT DEFAULT NULL, `public_time` INT DEFAULT NULL,
-  `update_time` INT DEFAULT NULL, PRIMARY KEY (`id`),
-  KEY `idx_user_id` (`user_id`), KEY `idx_visibility` (`visibility`),
-  UNIQUE KEY `uniq_share_token` (`share_token`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `email_verification_token` (
-  `token` VARCHAR(64) NOT NULL, `user_id` INT NOT NULL,
-  `email` VARCHAR(120) DEFAULT NULL, `purpose` VARCHAR(20) DEFAULT 'register',
-  `created_at` INT DEFAULT NULL, `expires_at` INT DEFAULT NULL,
-  `used` BOOLEAN DEFAULT FALSE, PRIMARY KEY (`token`),
-  KEY `idx_user_id` (`user_id`), KEY `idx_expires` (`expires_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `user_email_status` (
-  `user_id` INT NOT NULL, `is_email_verified` BOOLEAN DEFAULT FALSE,
-  `verified_at` INT DEFAULT NULL, `last_send_at` INT DEFAULT NULL,
-  PRIMARY KEY (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `user_hit_score` (
-  `user_id` INT NOT NULL, `total` INT DEFAULT 0,
-  `basic_score` INT DEFAULT 0, `contribution_score` INT DEFAULT 0,
-  `contest_score` INT DEFAULT 0, `practice_score` INT DEFAULT 0,
-  `last_calc_at` INT DEFAULT NULL, PRIMARY KEY (`user_id`),
-  KEY `idx_total` (`total`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `user_hit_score_history` (
-  `id` INT NOT NULL AUTO_INCREMENT, `user_id` INT NOT NULL,
-  `total` INT DEFAULT 0, `basic_score` INT DEFAULT 0,
-  `contribution_score` INT DEFAULT 0, `contest_score` INT DEFAULT 0,
-  `practice_score` INT DEFAULT 0, `recorded_at` INT NOT NULL,
-  PRIMARY KEY (`id`), KEY `idx_user_time` (`user_id`, `recorded_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `user_hit_setting` (
-  `user_id` INT NOT NULL, `hide_hit` BOOLEAN DEFAULT FALSE,
-  `update_time` INT DEFAULT NULL, PRIMARY KEY (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ============ v1.4.x: 工单 / 提交记录管理员标记 ============
-CREATE TABLE IF NOT EXISTS `judge_state_admin_action` (
-  `judge_id` INT NOT NULL, `action_type` VARCHAR(20) NOT NULL,
-  `operator_id` INT NOT NULL, `operator_time` INT NOT NULL,
-  `reason` VARCHAR(255) DEFAULT NULL, `was_accepted` BOOLEAN DEFAULT FALSE,
-  `affected_problem_id` INT DEFAULT NULL, `affected_user_id` INT DEFAULT NULL,
-  PRIMARY KEY (`judge_id`),
-  KEY `idx_user_action` (`affected_user_id`, `action_type`),
-  KEY `idx_problem_user` (`affected_problem_id`, `affected_user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `ticket` (
-  `id` INT NOT NULL AUTO_INCREMENT, `category` VARCHAR(20) NOT NULL,
-  `subtype` VARCHAR(60) NOT NULL, `title` VARCHAR(200) NOT NULL,
-  `description` MEDIUMTEXT, `creator_id` INT NOT NULL,
-  `assignee_id` INT DEFAULT NULL, `status` VARCHAR(20) DEFAULT 'pending',
-  `relation_type` VARCHAR(20) DEFAULT NULL, `relation_id` INT DEFAULT NULL,
-  `extra_data` TEXT, `is_public` BOOLEAN DEFAULT FALSE,
-  `created_at` INT NOT NULL, `updated_at` INT NOT NULL,
-  PRIMARY KEY (`id`), KEY `idx_creator` (`creator_id`),
-  KEY `idx_status` (`status`), KEY `idx_category` (`category`),
-  KEY `idx_assignee` (`assignee_id`),
-  KEY `idx_relation` (`relation_type`, `relation_id`),
-  KEY `idx_updated_at` (`updated_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `ticket_reply` (
-  `id` INT NOT NULL AUTO_INCREMENT, `ticket_id` INT NOT NULL,
-  `user_id` INT NOT NULL, `content` MEDIUMTEXT NOT NULL,
-  `is_internal` BOOLEAN DEFAULT FALSE, `is_status_change` BOOLEAN DEFAULT FALSE,
-  `created_at` INT NOT NULL, PRIMARY KEY (`id`),
-  KEY `idx_ticket` (`ticket_id`), KEY `idx_user` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `ticket_attachment` (
-  `id` INT NOT NULL AUTO_INCREMENT, `ticket_id` INT NOT NULL,
-  `reply_id` INT DEFAULT NULL, `uploader_id` INT NOT NULL,
-  `filename` VARCHAR(255) NOT NULL, `original_name` VARCHAR(255) NOT NULL,
-  `file_size` INT NOT NULL, `mime_type` VARCHAR(120),
-  `created_at` INT NOT NULL, PRIMARY KEY (`id`),
-  KEY `idx_ticket` (`ticket_id`), KEY `idx_reply` (`reply_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ============ v1.5.x: 用户名牌子 ============
-CREATE TABLE IF NOT EXISTS `user_tag` (
-  `user_id` INT NOT NULL,
-  `tag_text` VARCHAR(12) DEFAULT '',
-  `is_visible` BOOLEAN DEFAULT TRUE,
-  `granted_by` INT DEFAULT NULL, `granted_at` INT DEFAULT NULL,
-  `is_disabled` BOOLEAN DEFAULT FALSE,
-  `disabled_by` INT DEFAULT NULL, `disabled_at` INT DEFAULT NULL,
-  `disabled_reason` VARCHAR(255) DEFAULT NULL,
-  `updated_at` INT DEFAULT NULL, PRIMARY KEY (`user_id`),
-  KEY `idx_disabled` (`is_disabled`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ============ v1.6.0: 通知中心 + Banner ============
-CREATE TABLE IF NOT EXISTS `notification` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `recipient_id` INT NOT NULL,
-  `type` VARCHAR(50) NOT NULL,
-  `title` VARCHAR(255) NOT NULL,
-  `content` TEXT,
-  `source_url` VARCHAR(500),
-  `source_id` INT,
-  `actor_id` INT,
-  `is_read` TINYINT(1) DEFAULT 0,
-  `created_at` INT NOT NULL,
-  `read_at` INT,
-  PRIMARY KEY (`id`),
-  KEY `idx_recipient_unread` (`recipient_id`, `is_read`),
-  KEY `idx_recipient_created` (`recipient_id`, `created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `homepage_banner` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `title` VARCHAR(100) NOT NULL,
-  `image_path` VARCHAR(500) NOT NULL,
-  `link_url` VARCHAR(500),
-  `sort_order` INT DEFAULT 0,
-  `is_active` TINYINT(1) DEFAULT 1,
-  `start_time` INT, `end_time` INT,
-  `created_by` INT, `created_at` INT NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_active_sort` (`is_active`, `sort_order`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ============ v1.7.0: 关注/粉丝 + 犇犇 ============
-CREATE TABLE IF NOT EXISTS `user_follow` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `follower_id` INT NOT NULL,
-  `followee_id` INT NOT NULL,
-  `created_at` INT NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_follow` (`follower_id`, `followee_id`),
-  KEY `idx_followee` (`followee_id`),
-  KEY `idx_follower` (`follower_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `benben_post` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `user_id` INT NOT NULL,
-  `content` TEXT NOT NULL,
-  `reply_to` INT,
-  `is_deleted` TINYINT(1) DEFAULT 0,
-  `created_at` INT NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_user_created` (`user_id`, `created_at`),
-  KEY `idx_reply_to` (`reply_to`),
-  KEY `idx_deleted` (`is_deleted`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `benben_image` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `post_id` INT NOT NULL,
-  `filename` VARCHAR(255) NOT NULL,
-  `original_name` VARCHAR(255),
-  `uploader_id` INT NOT NULL,
-  `file_size` INT,
-  `created_at` INT NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_post` (`post_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-EOF
+docker compose exec -T mariadb mariadb -u root syzoj < sql/001_custom_tables.sql
 ```
 
 ### 启动后访问
@@ -538,10 +357,13 @@ EOF
 ├── env                             # 项目级环境变量
 ├── .gitignore
 ├── README.md
+├── sql/
+│   └── 001_custom_tables.sql       # 自定义业务表 + 审计表初始化
 └── custom/                         # 所有自定义代码与资源
 ├── header.ejs                  # 顶部 topbar + sidebar 渲染入口
-├── sidebar.css / sidebar.js    # v1.6.0 sidebar 布局 + 折叠逻辑
-├── mobile.css                  # v1.6.0 (空文件,移动端适配已取消)
+├── sidebar.css / sidebar.js    # sidebar 布局 + 折叠/移动端抽屉逻辑
+├── mobile.css                  # 移动端补充样式
+├── apple-ui.css                # 响应式 + 暗色模式全站样式层
 ├── username_tiers.css          # 用户名颜色档 + tag 样式
 ├── web.json                    # 站点配置
 ├── favicon.png / logo.png
@@ -556,6 +378,8 @@ EOF
 │   └── benben/                 # v1.7.0 犇犇图片
 ├── views/                      # 页面模板(EJS)
 ├── modules/                    # 路由模块(JS)
+│   ├── _authz.js                  # 统一权限 helper
+│   ├── _audit.js                  # 管理操作审计 helper
 │   ├── _user_privilege_loader.js  # 中间件:注入 privileges 到 res.locals
 │   ├── _user_follow_loader.js     # v1.7.0 注入 follow 状态
 │   ├── _user_tag_loader.js        # 注入 tag 状态
@@ -568,12 +392,15 @@ EOF
 │   ├── banner.js                  # v1.6.0 banner 后台
 │   ├── user_follow.js             # v1.7.0 关注/粉丝
 │   ├── benben.js                  # v1.7.0 犇犇板块
+│   ├── problemset.js              # v1.8.0 题单 + 题目收藏
 │   ├── solution.js                # 题解系统
 │   ├── message.js                 # 站内信
 │   └── clipboard.js               # 个人剪贴板
 ├── models-built/                  # 编译后的 typeorm model(.js)
-└── models/                        # ts 占位文件(用于 SYZOJ readdirSync 注册)## 🔧 常用维护命令
+└── models/                        # ts 占位文件(用于 SYZOJ readdirSync 注册)
 ```
+
+## 🔧 常用维护命令
 
 ```bash
 # 启动 / 重启 / 停止
@@ -594,6 +421,8 @@ docker exec -it algobeat-mariadb-1 mariadb -u root syzoj
 
 完整版本说明详见 [Releases](https://github.com/ZemuZzz/AlgoBeatOnlineJudge/releases)。
 
+- **v1.8.1**:暗色模式·紫黑主题·顶栏用户菜单修复·评测/Ranking/犇犇暗色覆盖·题单管理权限说明完善
+- **v1.8.0**:题单/训练计划·题目收藏·题单管理权限·题单完成进度·题目页 AJAX 收藏按钮·侧栏新增题单/收藏入口·Apple 风格响应式前端重构
 - **v1.7.1**:剪贴板 Markdown 编辑器升级·左侧编辑右侧实时预览·代码高亮·KaTeX 公式·查看页同步渲染·所有库本地化(自 host /self/lib/)
 - **v1.7.0**:关注/粉丝系统(含互关标识)·犇犇板块(多图发布 + 回复 + @ 提及)·@ 提及通知(题解评论/犇犇)·题解评论通知作者·首页集成犇犇 feed
 - **v1.6.0**:通知中心(铃铛 + 未读数 + 多触发器)·左侧 sidebar(洛谷风格)UI 重构·FOUC 防护·首页 banner 轮播系统(含 admin 后台)·首页重新设计·题解审核员显示
