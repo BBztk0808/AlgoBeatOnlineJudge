@@ -33,11 +33,13 @@ function ensureCanPublishPublicProblemSet(user) {
   }
 }
 
-function canViewProblem(user, problem) {
+async function canViewProblem(user, problem) {
   if (!problem) return false;
+  if (typeof problem.isAllowedUseBy === 'function') {
+    return await problem.isAllowedUseBy(user);
+  }
   if (problem.is_public) return true;
-  if (user && problem.user_id === user.id) return true;
-  return canManageProblemSets(user);
+  return !!(user && problem.user_id === user.id);
 }
 
 function canViewSet(user, set) {
@@ -87,7 +89,7 @@ async function loadSetItems(setId, viewer) {
   let items = [];
   for (let item of rows) {
     let problem = await Problem.findById(item.problem_id);
-    if (!problem || !canViewProblem(viewer, problem)) continue;
+    if (!problem || !await canViewProblem(viewer, problem)) continue;
     item.problem = problem;
     items.push(item);
   }
@@ -129,7 +131,7 @@ async function parseItemsText(text, viewer) {
     seen.add(pid);
 
     let problem = await Problem.findById(pid);
-    if (!problem || !canViewProblem(viewer, problem)) {
+    if (!problem || !await canViewProblem(viewer, problem)) {
       errors.push('第 ' + (i + 1) + ' 行题目 #' + pid + ' 不存在或不可见。');
       continue;
     }
@@ -361,7 +363,7 @@ app.get('/api/problem/:id/favorite', async (req, res) => {
   try {
     let problemId = parseInt(req.params.id);
     let problem = await Problem.findById(problemId);
-    if (!problem || !canViewProblem(res.locals.user, problem)) {
+    if (!problem || !await canViewProblem(res.locals.user, problem)) {
       return res.status(404).json({ ok: false, message: '题目不存在或不可见。' });
     }
     let info = await getFavoriteInfo(res.locals.user, problemId);
@@ -377,7 +379,7 @@ app.post('/api/problem/:id/favorite', async (req, res) => {
     let user = loginRequired(req, res);
     let problemId = parseInt(req.params.id);
     let problem = await Problem.findById(problemId);
-    if (!problem || !canViewProblem(user, problem)) throw new ErrorMessage('题目不存在或不可见。');
+    if (!problem || !await canViewProblem(user, problem)) throw new ErrorMessage('题目不存在或不可见。');
     let count = await setFavorite(user.id, problemId, true);
     res.json({ ok: true, favorite: true, count: count });
   } catch (e) {
@@ -390,6 +392,8 @@ app.post('/api/problem/:id/unfavorite', async (req, res) => {
   try {
     let user = loginRequired(req, res);
     let problemId = parseInt(req.params.id);
+    let problem = await Problem.findById(problemId);
+    if (!problem || !await canViewProblem(user, problem)) throw new ErrorMessage('题目不存在或不可见。');
     let count = await setFavorite(user.id, problemId, false);
     res.json({ ok: true, favorite: false, count: count });
   } catch (e) {
@@ -410,7 +414,7 @@ app.get('/favorites', async (req, res) => {
     let items = [];
     for (let fav of favorites) {
       let problem = await Problem.findById(fav.problem_id);
-      if (!problem || !canViewProblem(user, problem)) continue;
+      if (!problem || !await canViewProblem(user, problem)) continue;
       fav.problem = problem;
       fav.accepted = accepted.has(fav.problem_id);
       items.push(fav);

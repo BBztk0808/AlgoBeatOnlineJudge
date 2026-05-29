@@ -28,6 +28,10 @@ async function countFollowers(userId) {
 }
 syzoj.utils.countFollowing = countFollowing;
 syzoj.utils.countFollowers = countFollowers;
+function safeReturnUrl(url, fallback) {
+  if (syzoj.utils.safeRedirectUrl) return syzoj.utils.safeRedirectUrl(url, fallback);
+  return fallback;
+}
 app.post('/user/:id/follow', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
@@ -42,7 +46,7 @@ app.post('/user/:id/follow', async (req, res) => {
       where: { follower_id: res.locals.user.id, followee_id: targetId }
     });
     if (existing) {
-      return res.redirect(req.body.return_url || syzoj.utils.makeUrl(['user', targetId]));
+      return res.redirect(safeReturnUrl(req.body.return_url, syzoj.utils.makeUrl(['user', targetId])));
     }
 
     let f = await UserFollow.create();
@@ -51,7 +55,7 @@ app.post('/user/:id/follow', async (req, res) => {
     f.created_at = parseInt((new Date()).getTime() / 1000);
     await f.save();
 
-    res.redirect(req.body.return_url || syzoj.utils.makeUrl(['user', targetId]));
+    res.redirect(safeReturnUrl(req.body.return_url, syzoj.utils.makeUrl(['user', targetId])));
   } catch (e) {
     syzoj.log(e);
     res.render('error', { err: e });
@@ -70,7 +74,7 @@ app.post('/user/:id/unfollow', async (req, res) => {
       await existing.destroy();
     }
 
-    res.redirect(req.body.return_url || syzoj.utils.makeUrl(['user', targetId]));
+    res.redirect(safeReturnUrl(req.body.return_url, syzoj.utils.makeUrl(['user', targetId])));
   } catch (e) {
     syzoj.log(e);
     res.render('error', { err: e });
@@ -136,4 +140,3 @@ app.get('/user/:id/followers', async (req, res) => {
     res.render('error', { err: e });
   }
 });
-

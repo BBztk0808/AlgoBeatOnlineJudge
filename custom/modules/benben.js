@@ -22,6 +22,10 @@ function canDeleteBenben(viewer, post) {
   if (canSeeAllBenben(viewer)) return true;
   return false;
 }
+function safeReturnUrl(url, fallback) {
+  if (syzoj.utils.safeRedirectUrl) return syzoj.utils.safeRedirectUrl(url, fallback);
+  return fallback;
+}
 async function parseMentions(text) {
   if (!text) return [];
   let regex = /@([a-zA-Z0-9_\u4e00-\u9fa5\-]{1,32})/g;
@@ -157,7 +161,7 @@ app.post('/benben/new', app.multer.array('images', MAX_IMAGES), async (req, res)
       } catch (e) { syzoj.log('[benben] reply notify failed: ' + e.message); }
     }
 
-    res.redirect(req.body.return_url || '/');
+    res.redirect(safeReturnUrl(req.body.return_url, '/'));
   } catch (e) {
     syzoj.log(e);
     res.render('error', { err: e });
@@ -172,7 +176,7 @@ app.post('/benben/:id/delete', async (req, res) => {
     if (!canDeleteBenben(res.locals.user, post)) throw new ErrorMessage('您没有权限删除。');
     post.is_deleted = 1;
     await post.save();
-    res.redirect(req.body.return_url || '/');
+    res.redirect(safeReturnUrl(req.body.return_url, '/'));
   } catch (e) {
     syzoj.log(e);
     res.render('error', { err: e });

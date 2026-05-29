@@ -32,6 +32,35 @@ function canManageJudgeAction(user) {
   return syzoj.authz && syzoj.authz.has(user, 'manage_judge_action');
 }
 
+function hasOriginalSnapshot(action) {
+  return action && action.original_status !== null && action.original_status !== undefined;
+}
+
+function cloneJudgeResult(result) {
+  if (result === undefined) return null;
+  if (result === null) return null;
+  return JSON.parse(JSON.stringify(result));
+}
+
+function normalizeStoredJson(value) {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch (e) {
+    return value;
+  }
+}
+
+async function restoreJudgeFromSnapshot(judge, action) {
+  if (!hasOriginalSnapshot(action)) return false;
+  judge.status = action.original_status;
+  judge.score = action.original_score;
+  judge.pending = !!action.original_pending;
+  judge.result = normalizeStoredJson(action.original_result);
+  await judge.save();
+  return true;
+}
+
 async function hasOtherValidAcceptedSubmission(userId, problemId, excludeJudgeId) {
   let qb = JudgeState.createQueryBuilder('js')
     .leftJoin('judge_state_admin_action', 'a', 'a.judge_id = js.id')
@@ -76,6 +105,12 @@ app.post('/submission/:id/admin-action', async (req, res) => {
     action.operator_time = now;
     action.reason = reason || null;
     action.was_accepted = wasAccepted;
+    if (actionType === 'cancelled') {
+      action.original_status = judge.status || null;
+      action.original_score = judge.score === undefined ? null : judge.score;
+      action.original_pending = !!judge.pending;
+      action.original_result = cloneJudgeResult(judge.result);
+    }
     action.affected_problem_id = judge.problem_id;
     action.affected_user_id = judge.user_id;
     await action.save();
@@ -125,10 +160,21 @@ app.post('/submission/:id/admin-action/revoke', async (req, res) => {
     let judge = await JudgeState.findById(id);
     if (!judge) throw new ErrorMessage('无此提交记录。');
 
-    let wasCancelled = (action.action_type === 'cancelled');
-    if (action.was_accepted && action.affected_user_id && action.affected_problem_id) {
+    let restoredFromSnapshot = false;
+    let rejudgedWithoutSnapshot = false;
+    if (action.action_type === 'cancelled') {
+      restoredFromSnapshot = await restoreJudgeFromSnapshot(judge, action);
+    }
+
+    let shouldRestoreAc = false;
+    if (action.action_type === 'cancelled') {
+      shouldRestoreAc = restoredFromSnapshot && action.original_status === 'Accepted';
+    } else {
+      shouldRestoreAc = action.was_accepted && judge.status === 'Accepted';
+    }
+    if (shouldRestoreAc && action.affected_user_id && action.affected_problem_id) {
       let hasOther = await hasOtherValidAcceptedSubmission(action.affected_user_id, action.affected_problem_id, id);
-      if (!hasOther && judge.status === 'Accepted') {
+      if (!hasOther) {
         let user = await User.findById(action.affected_user_id);
         if (user) {
           user.ac_num = (user.ac_num || 0) + 1;
@@ -140,10 +186,17 @@ app.post('/submission/:id/admin-action/revoke', async (req, res) => {
     await action.destroy();
     await refreshAdminActionCache();
     if (syzoj.utils.refreshContestCheaterCache) await syzoj.utils.refreshContestCheaterCache();
+    if (action.action_type === 'cancelled' && !restoredFromSnapshot) {
+      await judge.loadRelationships();
+      await judge.rejudge();
+      rejudgedWithoutSnapshot = true;
+    }
     await syzoj.audit.log(req, 'judge_action.revoke', 'judge_state', id, {
       action_type: action.action_type,
       affected_problem_id: action.affected_problem_id,
-      affected_user_id: action.affected_user_id
+      affected_user_id: action.affected_user_id,
+      restored_from_snapshot: restoredFromSnapshot,
+      rejudged_without_snapshot: rejudgedWithoutSnapshot
     });
 
     res.redirect(syzoj.utils.makeUrl(['submission', id]));
@@ -171,16 +224,11 @@ syzoj.utils.getJudgeAdminActions = async function(judgeIds) {
 app.post('/submission/:id/restore-and-rejudge', async (req, res) => {
   try {
     if (!res.locals.user) throw new ErrorMessage('请先登录。');
+    syzoj.authz.require(res.locals.user, 'manage_judge_action', '您没有权限重新评测此提交。');
 
     let id = parseInt(req.params.id);
     let judge = await JudgeState.findById(id);
     if (!judge) throw new ErrorMessage('无此提交记录。');
-
-    let isOwner = (judge.user_id === res.locals.user.id);
-    let isAdmin = canManageJudgeAction(res.locals.user);
-    if (!isOwner && !isAdmin) {
-      throw new ErrorMessage('您没有权限重新评测此提交。');
-    }
 
     if (judge.status !== 'Cancelled') {
       throw new ErrorMessage('仅可对已取消评测的提交使用此操作。');
@@ -192,6 +240,11 @@ app.post('/submission/:id/restore-and-rejudge', async (req, res) => {
     if (syzoj.utils.refreshContestCheaterCache) await syzoj.utils.refreshContestCheaterCache();
     await judge.loadRelationships();
     await judge.rejudge();
+    await syzoj.audit.log(req, 'judge_action.restore_and_rejudge', 'judge_state', id, {
+      cleared_action: action ? action.action_type : null,
+      affected_problem_id: action ? action.affected_problem_id : judge.problem_id,
+      affected_user_id: action ? action.affected_user_id : judge.user_id
+    });
 
     res.redirect(syzoj.utils.makeUrl(['submission', id]));
   } catch (e) {

@@ -52,8 +52,7 @@ let isCheated = (typeof judgeAdminAction !== 'undefined' && judgeAdminAction && 
           <br><span style="color: #555;">原因：<%= markedDetail.reason %></span>
         <% } %>
       </span>
-      <% if (markedDetail.action_type === 'cancelled' && res.locals.user
-             && (res.locals.user.id === markedDetail.affected_user_id || canManageAction)) { %>
+      <% if (markedDetail.action_type === 'cancelled' && canManageAction) { %>
         <div style="margin-top: 12px;">
           <form method="post" action="<%= syzoj.utils.makeUrl(['submission', info.submissionId, 'restore-and-rejudge']) %>"
                 onsubmit="return confirm('确定要重新评测这条提交吗？\n\n这会清除取消标记，重新放回评测队列。');"

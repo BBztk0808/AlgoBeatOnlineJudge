@@ -140,11 +140,21 @@ CREATE TABLE IF NOT EXISTS `judge_state_admin_action` (
   `judge_id` INT NOT NULL, `action_type` VARCHAR(20) NOT NULL,
   `operator_id` INT NOT NULL, `operator_time` INT NOT NULL,
   `reason` VARCHAR(255) DEFAULT NULL, `was_accepted` BOOLEAN DEFAULT FALSE,
+  `original_status` VARCHAR(20) DEFAULT NULL,
+  `original_score` INT DEFAULT NULL,
+  `original_pending` BOOLEAN DEFAULT NULL,
+  `original_result` JSON DEFAULT NULL,
   `affected_problem_id` INT DEFAULT NULL, `affected_user_id` INT DEFAULT NULL,
   PRIMARY KEY (`judge_id`),
   KEY `idx_user_action` (`affected_user_id`, `action_type`),
   KEY `idx_problem_user` (`affected_problem_id`, `affected_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE `judge_state_admin_action`
+  ADD COLUMN IF NOT EXISTS `original_status` VARCHAR(20) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `original_score` INT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `original_pending` BOOLEAN DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `original_result` JSON DEFAULT NULL;
 
 CREATE TABLE IF NOT EXISTS `ticket` (
   `id` INT NOT NULL AUTO_INCREMENT, `category` VARCHAR(20) NOT NULL,

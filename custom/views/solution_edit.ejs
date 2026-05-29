@@ -12,7 +12,7 @@
 
   <h2><%= solution.id ? '编辑题解' : '为「' + problem.title + '」投稿题解' %></h2>
 
-  <% if (!solution.id && !user.is_admin) { %>
+  <% if (!solution.id && !(res.locals.can && res.locals.can('manage_solution'))) { %>
     <div class="ui info message">
       <i class="info circle icon"></i> 投稿后将进入审核状态，管理员通过后才会公开。审核期间仅你自己和管理员可见。
     </div>

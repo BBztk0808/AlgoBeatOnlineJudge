@@ -52,6 +52,16 @@ function requirePermission(user, key, message) {
   return true;
 }
 
+function safeRedirectUrl(url, fallback) {
+  fallback = fallback || '/';
+  if (!url) return fallback;
+  url = String(url).trim();
+  if (!url) return fallback;
+  if (url[0] !== '/' || url.startsWith('//')) return fallback;
+  if (url.includes('\\') || /[\r\n]/.test(url)) return fallback;
+  return url;
+}
+
 syzoj.authz = {
   permissions: PERMISSIONS,
   isSuperAdmin,
@@ -70,3 +80,5 @@ app.use((req, res, next) => {
   };
   next();
 });
+
+syzoj.utils.safeRedirectUrl = safeRedirectUrl;

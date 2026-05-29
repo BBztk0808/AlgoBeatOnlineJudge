@@ -64,6 +64,26 @@ var JudgeStateAdminAction = /** @class */ (function (_super) {
     ], JudgeStateAdminAction.prototype, "was_accepted");
 
     __decorate([
+        TypeORM.Column({ nullable: true, type: "varchar", length: 20 }),
+        __metadata("design:type", String)
+    ], JudgeStateAdminAction.prototype, "original_status");
+
+    __decorate([
+        TypeORM.Column({ nullable: true, type: "integer" }),
+        __metadata("design:type", Number)
+    ], JudgeStateAdminAction.prototype, "original_score");
+
+    __decorate([
+        TypeORM.Column({ nullable: true, type: "boolean" }),
+        __metadata("design:type", Boolean)
+    ], JudgeStateAdminAction.prototype, "original_pending");
+
+    __decorate([
+        TypeORM.Column({ nullable: true, type: "json" }),
+        __metadata("design:type", Object)
+    ], JudgeStateAdminAction.prototype, "original_result");
+
+    __decorate([
         TypeORM.Index(),
         TypeORM.Column({ nullable: true, type: "integer" }),
         __metadata("design:type", Number)

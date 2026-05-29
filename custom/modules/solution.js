@@ -193,6 +193,7 @@ app.post('/solution/:id/edit', async (req, res) => {
     if (!res.locals.user) throw new ErrorMessage('请登录后继续。');
 
     let id = parseInt(req.params.id);
+    let canReview = syzoj.authz.has(res.locals.user, 'manage_solution');
     let solution;
     let isNew = false;
 
@@ -203,12 +204,19 @@ app.post('/solution/:id/edit', async (req, res) => {
       if (!await problem.isAllowedUseBy(res.locals.user)) {
         throw new ErrorMessage('您没有权限进行此操作。');
       }
+      let setting = await ProblemSolutionSetting.findOne({ where: { problem_id: pid } });
+      if (setting && setting.disable_submission) {
+        throw new ErrorMessage('该题已关闭题解提交。');
+      }
+      if (!await syzoj.utils.isEmailVerified(res.locals.user.id)) {
+        throw new ErrorMessage('请先验证邮箱后再投稿题解。');
+      }
 
       solution = await ProblemSolution.create();
       solution.problem_id = pid;
       solution.user_id = res.locals.user.id;
       solution.public_time = parseInt((new Date()).getTime() / 1000);
-      solution.status = res.locals.user.is_admin ? 'accepted' : 'pending';
+      solution.status = canReview ? 'accepted' : 'pending';
       isNew = true;
     } else {
       solution = await ProblemSolution.findById(id);
@@ -216,7 +224,7 @@ app.post('/solution/:id/edit', async (req, res) => {
       if (!solution.isAllowedEditBy(res.locals.user)) {
         throw new ErrorMessage('您没有权限编辑此题解。');
       }
-      if (!res.locals.user.is_admin && solution.status !== 'pending') {
+      if (!canReview && solution.status !== 'pending') {
         solution.status = 'pending';
       }
     }

@@ -14,6 +14,12 @@ const TICKET_UPLOAD_DIR = '/app/custom-uploads/tickets';
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 const MAX_FILES_PER_TICKET = 10;
 try { fs.mkdirSync(TICKET_UPLOAD_DIR, { recursive: true }); } catch (e) {}
+function cleanupUploadedFiles(files) {
+  if (!files) return;
+  for (let f of files) {
+    try { if (f && f.path) fs.unlinkSync(f.path); } catch (e) {}
+  }
+}
 const TICKET_CATEGORIES = {
   problem: {
     label: '题目工单',
@@ -88,6 +94,10 @@ const TICKET_STATUS = {
 };
 syzoj.TICKET_CATEGORIES = TICKET_CATEGORIES;
 syzoj.TICKET_STATUS = TICKET_STATUS;
+
+function isFinalTicketStatus(status) {
+  return ['closed', 'rejected', 'resolved'].includes(status);
+}
 
 function isTicketAdmin(user) {
   return syzoj.authz && syzoj.authz.has(user, 'manage_ticket');
@@ -385,11 +395,11 @@ app.get('/ticket/:id', async (req, res) => {
       .getMany();
 
     let canReply = false;
-    if (isCreator && !['closed', 'rejected', 'resolved'].includes(ticket.status)) canReply = true;
-    if (isAdmin && ticket.assignee_id === res.locals.user.id) canReply = true;
+    if (isCreator && !isFinalTicketStatus(ticket.status)) canReply = true;
+    if (isAdmin && ticket.assignee_id === res.locals.user.id && !isFinalTicketStatus(ticket.status)) canReply = true;
 
     let canChangeStatus = isAdmin;
-    let canWithdraw = isCreator && !['closed', 'rejected', 'resolved'].includes(ticket.status);
+    let canWithdraw = isCreator && !isFinalTicketStatus(ticket.status);
 
     res.render('ticket', {
       ticket: ticket,
@@ -430,7 +440,7 @@ app.post('/ticket/:id/reply', async (req, res) => {
     let isAdmin = isTicketAdmin(res.locals.user);
     let isCreator = res.locals.user.id === ticket.creator_id;
 
-    if (['closed', 'rejected', 'resolved'].includes(ticket.status)) {
+    if (isFinalTicketStatus(ticket.status)) {
       throw new ErrorMessage('此工单已结案,不能再回复。');
     }
 
@@ -592,7 +602,7 @@ app.post('/ticket/:id/withdraw', async (req, res) => {
       throw new ErrorMessage('您不是此工单的创建者。');
     }
 
-    if (['closed', 'rejected', 'resolved'].includes(ticket.status)) {
+    if (isFinalTicketStatus(ticket.status)) {
       throw new ErrorMessage('此工单已结案,无需撤回。');
     }
 
@@ -729,20 +739,25 @@ app.post('/ticket/:id/upload', app.multer.array('attachments', MAX_FILES_PER_TIC
   let savedFiles = [];
   try {
     if (!res.locals.user) {
-      if (req.files) for (let f of req.files) { try { fs.unlinkSync(f.path); } catch(e){} }
+      cleanupUploadedFiles(req.files);
       return res.status(401).json({ ok: false, message: '请先登录。' });
     }
 
     let ticketId = parseInt(req.params.id);
     let ticket = await Ticket.findById(ticketId);
     if (!ticket) {
-      if (req.files) for (let f of req.files) { try { fs.unlinkSync(f.path); } catch(e){} }
+      cleanupUploadedFiles(req.files);
       return res.status(404).json({ ok: false, message: '工单不存在。' });
     }
 
     if (!canViewTicket(res.locals.user, ticket)) {
-      if (req.files) for (let f of req.files) { try { fs.unlinkSync(f.path); } catch(e){} }
+      cleanupUploadedFiles(req.files);
       return res.status(403).json({ ok: false, message: '无权限。' });
+    }
+
+    if (isFinalTicketStatus(ticket.status)) {
+      cleanupUploadedFiles(req.files);
+      return res.status(400).json({ ok: false, message: '此工单已结案,不能继续上传附件。' });
     }
 
     if (!req.files || req.files.length === 0) {
@@ -750,14 +765,14 @@ app.post('/ticket/:id/upload', app.multer.array('attachments', MAX_FILES_PER_TIC
     }
     for (let f of req.files) {
       if (f.size > MAX_FILE_SIZE) {
-        for (let f2 of req.files) { try { fs.unlinkSync(f2.path); } catch(e){} }
+        cleanupUploadedFiles(req.files);
         return res.json({ ok: false, message: '文件「' + f.originalname + '」超过 ' + (MAX_FILE_SIZE / 1024 / 1024) + ' MB 限制。' });
       }
     }
 
     let existing = await TicketAttachment.count({ where: 'ticket_id = ' + ticketId });
     if (existing + req.files.length > MAX_FILES_PER_TICKET) {
-      for (let f of req.files) { try { fs.unlinkSync(f.path); } catch(e){} }
+      cleanupUploadedFiles(req.files);
       return res.json({ ok: false, message: '此工单附件总数将超过 ' + MAX_FILES_PER_TICKET + ' 个。' });
     }
 
@@ -797,7 +812,7 @@ app.post('/ticket/:id/upload', app.multer.array('attachments', MAX_FILES_PER_TIC
   } catch (e) {
     syzoj.log(e);
     for (let p of savedFiles) { try { fs.unlinkSync(p); } catch(err){} }
-    if (req.files) for (let f of req.files) { try { fs.unlinkSync(f.path); } catch(err){} }
+    cleanupUploadedFiles(req.files);
     res.status(500).json({ ok: false, message: e.message || '上传失败' });
   }
 });

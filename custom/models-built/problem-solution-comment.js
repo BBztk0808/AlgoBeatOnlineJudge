@@ -33,6 +33,10 @@ var ProblemSolutionComment = /** @class */ (function (_super) {
 
     ProblemSolutionComment.cache = false;
 
+    function canManageSolution(user) {
+        return !!(typeof syzoj !== 'undefined' && syzoj.authz && syzoj.authz.has(user, 'manage_solution'));
+    }
+
     // 异步加载关联的用户和题解
     ProblemSolutionComment.prototype.loadRelationships = async function () {
         var User = require('./user').default;
@@ -44,11 +48,10 @@ var ProblemSolutionComment = /** @class */ (function (_super) {
     // 谁能编辑/删除这条评论:管理员/评论作者本人/题解作者本人
     ProblemSolutionComment.prototype.isAllowedEditBy = async function (user) {
         if (!user) return false;
-        if (user.is_admin) return true;
+        if (canManageSolution(user)) return true;
         if (this.user_id === user.id) return true;
         await this.loadRelationships();
         if (this.solution && this.solution.user_id === user.id) return true;
-        if (await user.hasPrivilege('manage_problem')) return true;
         return false;
     };
 

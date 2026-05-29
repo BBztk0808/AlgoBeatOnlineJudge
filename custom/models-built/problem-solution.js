@@ -33,14 +33,18 @@ var ProblemSolution = /** @class */ (function (_super) {
 
     ProblemSolution.cache = false;
 
+    function canManageSolution(user) {
+        return !!(typeof syzoj !== 'undefined' && syzoj.authz && syzoj.authz.has(user, 'manage_solution'));
+    }
+
     // 权限判断:管理员 / 投稿者本人可以编辑
     ProblemSolution.prototype.isAllowedEditBy = function (user) {
-        return user && (user.is_admin || this.user_id === user.id);
+        return user && (canManageSolution(user) || this.user_id === user.id);
     };
 
     // 权限判断:管理员可以审核
     ProblemSolution.prototype.isAllowedReviewBy = function (user) {
-        return user && user.is_admin;
+        return canManageSolution(user);
     };
 
     // 权限判断:谁能看到这篇题解
@@ -49,8 +53,8 @@ var ProblemSolution = /** @class */ (function (_super) {
         if (this.status === 'accepted') return true;
         if (!user) return false;
         // 未通过审核的,投稿者本人/管理员/有题目管理权限的人可见
-        if (user.is_admin || this.user_id === user.id) return true;
-        if (await user.hasPrivilege('manage_problem')) return true;
+        if (this.user_id === user.id) return true;
+        if (canManageSolution(user)) return true;
         return false;
     };
     // 重新计算评论数(每次新增/删除评论后调用)
@@ -66,7 +70,7 @@ var ProblemSolution = /** @class */ (function (_super) {
         if (this.status !== 'accepted') return false; // 仅已通过的题解可评论
         if (!this.allow_comment) {                   // 作者关闭了评论
             // 但作者本人和管理员仍可评论
-            if (user.is_admin) return true;
+            if (canManageSolution(user)) return true;
             if (this.user_id === user.id) return true;
             return false;
         }
